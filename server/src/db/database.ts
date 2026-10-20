@@ -1,0 +1,275 @@
+/**
+ * Atlas Carbone - Couche Base de Données Relationnelle (SQLite en mode WAL)
+ * Utilise le module natif haute-performance node:sqlite de Node.js 22
+ */
+
+import { DatabaseSync } from 'node:sqlite';
+import path from 'node:path';
+import fs from 'node:fs';
+
+const DB_DIR = path.resolve(process.cwd(), 'data');
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+const DB_PATH = path.join(DB_DIR, 'atlas_carbone.db');
+export const db = new DatabaseSync(DB_PATH);
+
+// Configuration des pragmas pour l'intégrité relationnelle et les performances
+db.exec('PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA journal_mode = WAL;');
+
+/**
+ * Initialisation du schéma relationnel complet
+ */
+export function initDatabaseSchema() {
+  db.exec(`
+    -- 1. Utilisateurs
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      is_superadmin INTEGER DEFAULT 0,
+      mfa_secret TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 2. Entreprises (Tenants)
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      legal_type TEXT,
+      ice TEXT,
+      city TEXT,
+      sector TEXT,
+      logo_url TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 3. Adhésions et Rôles RBAC
+    CREATE TABLE IF NOT EXISTS memberships (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      role TEXT NOT NULL, -- 'admin', 'carbon_manager', 'site_manager', 'contributor', 'auditor', 'commercial'
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id, organization_id)
+    );
+
+    -- 4. Sites opérationnels
+    CREATE TABLE IF NOT EXISTS sites (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      city TEXT NOT NULL,
+      address TEXT,
+      manager_user_id TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+
+    -- 5. Exercices de reporting (Inventaires GES)
+    CREATE TABLE IF NOT EXISTS reporting_periods (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      consolidation_approach TEXT NOT NULL DEFAULT 'operational_control', -- 'operational_control', 'financial_control', 'equity_share'
+      status TEXT NOT NULL DEFAULT 'draft', -- 'draft', 'collection', 'in_review', 'corrections_requested', 'validated', 'closed'
+      closed_at TEXT,
+      closed_by TEXT REFERENCES users(id),
+      snapshot_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 6. Catalogue de facteurs d'émission versionné
+    CREATE TABLE IF NOT EXISTS emission_factors (
+      id TEXT NOT NULL,
+      version TEXT NOT NULL DEFAULT '1.0',
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      scope INTEGER NOT NULL,
+      iso_category INTEGER NOT NULL,
+      ghg_category TEXT NOT NULL,
+      value REAL NOT NULL,
+      numerator_unit TEXT NOT NULL,
+      denominator_unit TEXT NOT NULL,
+      raw_unit TEXT,
+      perimeter TEXT NOT NULL,
+      geography TEXT NOT NULL,
+      reference_year INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      sheet_origin TEXT,
+      row_origin INTEGER,
+      uncertainty_pct REAL DEFAULT 0.20,
+      status TEXT NOT NULL DEFAULT 'validated', -- 'extracted', 'to_verify', 'validated', 'rejected', 'archived'
+      verification_note TEXT,
+      access_level TEXT NOT NULL DEFAULT 'common_catalog', -- 'common_catalog', 'organization_private'
+      organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (id, version)
+    );
+
+    -- 7. Données d'activité et calculs GES enregistrés
+    CREATE TABLE IF NOT EXISTS activity_records (
+      id TEXT PRIMARY KEY,
+      reporting_period_id TEXT NOT NULL REFERENCES reporting_periods(id) ON DELETE CASCADE,
+      site_id TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      category TEXT NOT NULL,
+      scope INTEGER NOT NULL,
+      iso_category INTEGER NOT NULL,
+      label TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT NOT NULL,
+      factor_id TEXT NOT NULL,
+      factor_version TEXT NOT NULL DEFAULT '1.0',
+      emission_kg_co2e REAL NOT NULL,
+      emission_t_co2e REAL NOT NULL,
+      is_biogenic INTEGER DEFAULT 0,
+      uncertainty_relative REAL,
+      uncertainty_absolute_kg REAL,
+      calculation_trace_json TEXT NOT NULL,
+      invoice_ref TEXT,
+      supplier_name TEXT,
+      evidence_url TEXT,
+      status TEXT NOT NULL DEFAULT 'active', -- 'active', 'excluded'
+      exclusion_reason TEXT,
+      notes TEXT,
+      created_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+
+    -- 8. Actions de réduction (Plan de transition)
+    CREATE TABLE IF NOT EXISTS reduction_actions (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      reporting_period_id TEXT REFERENCES reporting_periods(id),
+      site_id TEXT REFERENCES sites(id),
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      responsible TEXT,
+      cost_mad REAL DEFAULT 0,
+      annual_savings_tco2e REAL DEFAULT 0,
+      target_year INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'proposed', -- 'proposed', 'in_progress', 'completed', 'cancelled'
+      created_at TEXT NOT NULL
+    );
+
+    -- 9. Module MACF / CBAM : Installations & Procédés
+    CREATE TABLE IF NOT EXISTS cbam_installations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      city TEXT NOT NULL,
+      unlocode TEXT,
+      coordinates TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cbam_products (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      installation_id TEXT NOT NULL REFERENCES cbam_installations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      cn_code TEXT NOT NULL,
+      sector TEXT NOT NULL,
+      annual_production_tonnes REAL NOT NULL,
+      annual_export_eu_tonnes REAL DEFAULT 0,
+      specific_direct_emissions REAL DEFAULT 0,
+      specific_indirect_emissions REAL DEFAULT 0,
+      specific_total_emissions REAL DEFAULT 0,
+      precursors_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cbam_importer_dossiers (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      cbam_product_id TEXT NOT NULL REFERENCES cbam_products(id) ON DELETE CASCADE,
+      importer_name TEXT NOT NULL,
+      importer_country TEXT NOT NULL,
+      importer_eori TEXT,
+      reference_period TEXT NOT NULL,
+      dossier_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    -- 10. Devis, Abonnements & Facturation
+    CREATE TABLE IF NOT EXISTS quotes (
+      id TEXT PRIMARY KEY,
+      quote_number TEXT UNIQUE NOT NULL,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      plan_name TEXT NOT NULL,
+      base_amount_mad REAL NOT NULL,
+      extra_sites_count INTEGER DEFAULT 0,
+      extra_users_count INTEGER DEFAULT 0,
+      discount_mad REAL DEFAULT 0,
+      tva_rate REAL DEFAULT 0.20,
+      tva_amount_mad REAL NOT NULL,
+      total_ttc_mad REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft', -- 'draft', 'sent', 'accepted', 'rejected', 'expired'
+      valid_until TEXT NOT NULL,
+      created_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT UNIQUE NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      plan_name TEXT NOT NULL DEFAULT 'essentiel', -- 'essentiel', 'entreprise', 'export_europe'
+      status TEXT NOT NULL DEFAULT 'trial', -- 'trial', 'active', 'expired', 'cancelled'
+      sites_limit INTEGER NOT NULL DEFAULT 2,
+      users_limit INTEGER NOT NULL DEFAULT 3,
+      cbam_access INTEGER NOT NULL DEFAULT 0,
+      current_period_end TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    -- 11. Piste d'audit immuable
+    CREATE TABLE IF NOT EXISTS audit_events (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id TEXT REFERENCES users(id),
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT,
+      details_json TEXT,
+      ip_address TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 12. Demandes de contact et Leads
+    CREATE TABLE IF NOT EXISTS leads (
+      id TEXT PRIMARY KEY,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      company TEXT NOT NULL,
+      sector TEXT,
+      message TEXT,
+      utm_source TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 13. Notifications et Boîte d'envoi locale
+    CREATE TABLE IF NOT EXISTS dev_notifications (
+      id TEXT PRIMARY KEY,
+      recipient_email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      template_name TEXT NOT NULL,
+      content_html TEXT NOT NULL,
+      sent_at TEXT NOT NULL
+    );
+
+    -- Index d'optimisation
+    CREATE INDEX IF NOT EXISTS idx_activity_records_period ON activity_records(reporting_period_id);
+    CREATE INDEX IF NOT EXISTS idx_activity_records_org ON activity_records(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_emission_factors_scope ON emission_factors(scope);
+    CREATE INDEX IF NOT EXISTS idx_emission_factors_cat ON emission_factors(category);
+    CREATE INDEX IF NOT EXISTS idx_cbam_products_org ON cbam_products(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_events(organization_id);
+  `);
+}
