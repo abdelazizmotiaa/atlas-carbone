@@ -82,14 +82,12 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
   const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
 
-  // Décompte dynamique de la session de 3 heures
+  // Décompte indicatif de session
   useEffect(() => {
     if (remainingSeconds === null || remainingSeconds <= 0) return;
     const interval = setInterval(() => {
       setRemainingSeconds(prev => {
         if (prev === null || prev <= 1) {
-          setIsTrialExpired(true);
-          setShowPricingModal(true);
           return 0;
         }
         return prev - 1;
@@ -315,21 +313,21 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
           )}
         </div>
         <div className="flex items-center space-x-2 shrink-0">
-          <button
-            onClick={() => setShowPricingModal(true)}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3.5 py-1 rounded-lg transition shadow-sm text-xs flex items-center space-x-1"
-          >
-            <Zap className="w-3.5 h-3.5 text-slate-950" />
-            <span>Débloquer mon Bilan (Offres en MAD)</span>
-          </button>
           {sessionId && (
             <button
               onClick={() => setShowClaimModal(true)}
-              className="bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold px-3 py-1 rounded-lg transition shadow-sm"
+              className="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-lg transition shadow-sm text-xs flex items-center space-x-1.5"
             >
-              {t.trialBtnClaim}
+              <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+              <span>Créer mon compte entreprise & Enregistrer</span>
             </button>
           )}
+          <button
+            onClick={() => setShowPricingModal(true)}
+            className="bg-brand-800 hover:bg-brand-700 text-white font-medium px-3 py-1.5 rounded-lg transition border border-brand-700 text-xs"
+          >
+            <span>Offres & Tarifs MAD</span>
+          </button>
           <button
             onClick={onExitTrial}
             className="text-slate-300 hover:text-white underline text-xs"

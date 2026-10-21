@@ -4,7 +4,7 @@
  * et Thèmes Personnalisés pour Produits Marocains (MACF/CBAM, Agriculture, Industrie)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   TrendingDown,
@@ -35,7 +35,10 @@ import {
   Calendar,
   Award,
   Scale,
-  ScrollText
+  ScrollText,
+  X,
+  User,
+  Key
 } from 'lucide-react';
 import { api, setStoredToken, setStoredOrgId } from '../api.js';
 import { Language, translations } from '../i18n.js';
@@ -216,6 +219,33 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
   }
 ];
 
+export const MOROCCAN_SECTORS = [
+  'Industrie exportatrice / Métallurgie / Ciment / Engrais',
+  'Textile, Confection et Cuir',
+  'Agroalimentaire, Conserverie et Froid',
+  'Transport, Fret et Logistique',
+  'Construction, BTP et Matériaux',
+  'Hôtellerie, Restauration et Tourisme',
+  'Services, Banques, Bureaux et Informatique',
+  'Agriculture, Pêche et Élevage',
+  'Chimie, Plasturgie et Emballage',
+  'Autre secteur d’activité'
+];
+
+export const MOROCCAN_CITIES = [
+  'Casablanca',
+  'Tanger',
+  'Rabat / Salé / Kénitra',
+  'Agadir / Souss-Massa',
+  'Marrakech',
+  'Fès / Meknès',
+  'Oujda / Nador (Oriental)',
+  'El Jadida / Jorf Lasfar',
+  'Safi',
+  'Laâyoune / Dakhla',
+  'Autre ville'
+];
+
 export const LandingView: React.FC<LandingViewProps> = ({
   onLoginSuccess,
   lang = 'fr',
@@ -225,6 +255,93 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onOpenContent
 }) => {
   const t = translations[lang];
+
+  // Authentification Directe & Inscription Entreprise
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState<'register' | 'login'>('register');
+
+  // Formulaire d'inscription directe
+  const [regCompanyName, setRegCompanyName] = useState('');
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regCity, setRegCity] = useState('Casablanca');
+  const [regSector, setRegSector] = useState(MOROCCAN_SECTORS[0]);
+  const [regPhone, setRegPhone] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+
+  // Formulaire de connexion
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Détection des liens directs d'emailing (#register, #login, #signup)
+  useEffect(() => {
+    const checkHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#register' || hash === '#signup' || hash === '#inscription') {
+        setAuthTab('register');
+        setShowAuthModal(true);
+      } else if (hash === '#login' || hash === '#connexion') {
+        setAuthTab('login');
+        setShowAuthModal(true);
+      }
+    };
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError(null);
+    try {
+      const res = await api.auth.register({
+        company_name: regCompanyName,
+        full_name: regFullName,
+        email: regEmail,
+        password: regPassword,
+        city: regCity,
+        sector: regSector,
+        phone: regPhone || undefined
+      });
+      setStoredToken(res.token);
+      if (res.organizations && res.organizations.length > 0) {
+        setStoredOrgId(res.organizations[0].id);
+      }
+      setShowAuthModal(false);
+      onLoginSuccess(res.user, res.organizations);
+    } catch (err: any) {
+      setRegError(err.message || "Erreur lors de la création de votre compte entreprise.");
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const res = await api.auth.login({
+        email: loginEmail,
+        password: loginPassword
+      });
+      setStoredToken(res.token);
+      if (res.organizations && res.organizations.length > 0) {
+        setStoredOrgId(res.organizations[0].id);
+      }
+      setShowAuthModal(false);
+      onLoginSuccess(res.user, res.organizations);
+    } catch (err: any) {
+      setLoginError(err.message || "Email ou mot de passe incorrect.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   // État démonstration 1-clic
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -429,8 +546,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">10 cours</span>
               </button>
             )}
-            <a href="#demo-accounts" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? 'Demos' : 'Démos'}
+            <a href="#inscription" className="hover:text-emerald-800 transition">
+              {lang === 'en' ? 'Register' : 'Inscription'}
             </a>
             <a href="#tarifs" className="hover:text-emerald-800 transition text-emerald-900 font-extrabold flex items-center space-x-1">
               <span>{lang === 'en' ? 'Pricing (MAD)' : 'Tarifs (MAD)'}</span>
@@ -454,23 +571,29 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </button>
             )}
 
-            {/* Bouton Essai invité prioritaire */}
-            {onStartTrial && (
-              <button
-                onClick={onStartTrial}
-                className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-700 rounded-xl shadow-sm transition border border-emerald-900"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>{lang === 'en' ? 'Try for Free' : 'Essayer sans compte'}</span>
-              </button>
-            )}
-
-            <a
-              href="#demo-accounts"
-              className="hidden lg:inline-flex px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition"
+            {/* Bouton Connexion */}
+            <button
+              onClick={() => {
+                setAuthTab('login');
+                setShowAuthModal(true);
+              }}
+              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition shadow-sm"
             >
-              {lang === 'en' ? 'Company Space' : 'Espace Entreprise'}
-            </a>
+              <Lock className="w-3.5 h-3.5 inline mr-1 text-slate-500" />
+              <span>{lang === 'en' ? 'Sign In' : 'Se connecter'}</span>
+            </button>
+
+            {/* Bouton Inscription Entreprise Directe */}
+            <button
+              onClick={() => {
+                setAuthTab('register');
+                setShowAuthModal(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-700 rounded-xl shadow-sm transition border border-emerald-900"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>{lang === 'en' ? 'Register (Free)' : 'Créer mon compte'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -494,22 +617,33 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-4">
-                {onStartTrial && (
-                  <button
-                    onClick={onStartTrial}
-                    className="inline-flex items-center space-x-2.5 px-7 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition group border border-emerald-900 text-sm"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>{lang === 'en' ? 'Start Free Trial (0 MAD)' : 'Démarrer mon essai gratuit (0 MAD)'}</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition text-emerald-200" />
-                  </button>
-                )}
-                <a
-                  href="#livrables"
+                <button
+                  onClick={() => {
+                    setAuthTab('register');
+                    setShowAuthModal(true);
+                  }}
+                  className="inline-flex items-center space-x-2.5 px-7 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition group border border-emerald-900 text-sm"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{lang === 'en' ? 'Start My Carbon Accounting (Free)' : 'Démarrer mon Bilan Carbone (Gratuit)'}</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition text-emerald-200" />
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthTab('login');
+                    setShowAuthModal(true);
+                  }}
                   className="inline-flex items-center space-x-2 px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold rounded-xl shadow-sm transition text-sm"
                 >
+                  <Lock className="w-4 h-4 text-emerald-800" />
+                  <span>{lang === 'en' ? 'Sign In to My Space' : 'Se connecter'}</span>
+                </button>
+                <a
+                  href="#livrables"
+                  className="inline-flex items-center space-x-2 px-4 py-3.5 text-slate-600 hover:text-slate-900 font-semibold transition text-sm"
+                >
                   <FileText className="w-4 h-4 text-emerald-800" />
-                  <span>{lang === 'en' ? 'View Official Deliverables' : 'Voir les livrables officiels'}</span>
+                  <span>{lang === 'en' ? 'View Deliverables' : 'Livrables officiels'}</span>
                 </a>
               </div>
 
@@ -1003,15 +1137,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   </div>
 
                   <div className="pt-2">
-                    {onStartTrial && (
-                      <button
-                        onClick={onStartTrial}
-                        className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
-                      >
-                        <Sparkles className="w-4 h-4 text-amber-300" />
-                        <span>Calculer l’empreinte de mes produits</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setAuthTab('register');
+                        setShowAuthModal(true);
+                      }}
+                      className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>{lang === 'en' ? 'Start My Carbon Accounting (0 MAD)' : 'Calculer l’empreinte de mes produits (Gratuit)'}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1020,100 +1155,231 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </section>
 
-      {/* Section 1-Clic Accès Comptes Démo */}
-      <section id="demo-accounts" className="py-16 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          <div className="text-center max-w-3xl mx-auto space-y-2">
-            <h2 className="text-3xl font-extrabold text-slate-900">Espaces de Démonstration Pré-configurés</h2>
-            <p className="text-sm text-slate-600">
-              Découvrez la plateforme en 1 clic sans mot de passe, avec des inventaires réels clôturés.
+      {/* SECTION INSCRIPTION DIRECTE ENTREPRISE & CONNEXION */}
+      <section id="inscription" className="py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50 border-b border-slate-200 scroll-mt-20">
+        <div id="demo-accounts" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm text-emerald-900 text-xs font-bold tracking-wide">
+              <span>🇲🇦</span>
+              <span>Déploiement Entreprises Marocaines • Accès Gratuit & Immédiat</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              {lang === 'en' ? 'Start Your Certified Carbon Accounting' : 'Démarrez Votre Comptabilité Carbone'}
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+              {lang === 'en'
+                ? 'Create your free corporate account in 1 minute. Direct access to Scope 1, 2, and 3 calculations, ONEE electricity bills ingestion, and official ISO 14064-1 & EU CBAM reports.'
+                : 'Créez l’espace de votre entreprise en 1 minute. Accédez directement à vos calculs Scopes 1, 2 et 3, intégrez vos factures ONEE et générez vos bilans officiels ISO 14064-1 et MACF sans frais.'}
             </p>
           </div>
 
-          {errorMsg && (
-            <div className="max-w-md mx-auto p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl text-center">
-              {errorMsg}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Profil 1 : Agroalimentaire Multisites */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-sm flex flex-col justify-between space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Agroalimentaire & Froid
-                  </span>
-                  <Building2 className="w-5 h-5 text-emerald-800" />
-                </div>
-                <h3 className="font-bold text-slate-900 text-lg">Atlas Agro-Alimentaire SARL</h3>
-                <p className="text-xs text-slate-500 mt-1">Sites : Casablanca (Usine) & Agadir (Entrepôt). Bilan 2025 clôturé.</p>
-                <div className="mt-4 space-y-1 text-xs text-slate-700">
-                  <p>👤 <strong>Tariq El Alami</strong> (Directeur Général)</p>
-                  <p>📊 7 postes calculés, plan de transition PV 150 kWc</p>
-                </div>
-              </div>
+          {/* Carte avec onglets : Inscription gratuite / Se connecter */}
+          <div className="bg-white rounded-3xl border border-slate-300 shadow-lg p-6 sm:p-10">
+            {/* Basculeur Onglets */}
+            <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200 max-w-md mx-auto mb-8">
               <button
-                disabled={loadingDemo}
-                onClick={() => handleQuickDemoLogin('admin@agro-atlas.ma', 'AgroAtlas2026!', 'org-agro-atlas')}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-sm"
+                type="button"
+                onClick={() => setAuthTab('register')}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 ${
+                  authTab === 'register'
+                    ? 'bg-emerald-800 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <span>Accéder comme DG / Admin</span>
-                <ChevronRight className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>{lang === 'en' ? 'Create Company Account' : 'Créer mon compte entreprise'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthTab('login')}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 ${
+                  authTab === 'login'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                <span>{lang === 'en' ? 'Sign In' : 'Se connecter'}</span>
               </button>
             </div>
 
-            {/* Profil 2 : Responsable Carbone / RSE */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-sm flex flex-col justify-between space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-teal-50 text-teal-800 border border-teal-200">
-                    Responsable Carbone & RSE
-                  </span>
-                  <ShieldCheck className="w-5 h-5 text-teal-800" />
-                </div>
-                <h3 className="font-bold text-slate-900 text-lg">Salma Berrada (Resp. RSE)</h3>
-                <p className="text-xs text-slate-500 mt-1">Supervision de la collecte, contrôle des incertitudes et rapports.</p>
-                <div className="mt-4 space-y-1 text-xs text-slate-700">
-                  <p>🏢 Entreprise : Atlas Agro-Alimentaire</p>
-                  <p>🔍 Traçabilité déterministe certifiée sans fuite de facteurs</p>
-                </div>
-              </div>
-              <button
-                disabled={loadingDemo}
-                onClick={() => handleQuickDemoLogin('carbone@agro-atlas.ma', 'CarboneAtlas2026!', 'org-agro-atlas')}
-                className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-sm"
-              >
-                <span>Accéder comme Resp. Carbone</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            {authTab === 'register' ? (
+              <form onSubmit={handleRegister} className="space-y-6">
+                {regError && (
+                  <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
+                    <span className="font-bold">⚠️</span>
+                    <span>{regError}</span>
+                  </div>
+                )}
 
-            {/* Profil 3 : Industrie Exportatrice MACF */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-sm flex flex-col justify-between space-y-6">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-amber-50 text-amber-900 border border-amber-200">
-                    Industrie Exportatrice MACF
-                  </span>
-                  <Factory className="w-5 h-5 text-amber-800" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Nom de l'entreprise / Raison sociale <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regCompanyName}
+                      onChange={e => setRegCompanyName(e.target.value)}
+                      placeholder="Ex: AgroAtlas Maroc SARL"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Nom & Prénom du responsable <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regFullName}
+                      onChange={e => setRegFullName(e.target.value)}
+                      placeholder="Ex: Karim Benjelloun"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email professionnel <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={regEmail}
+                      onChange={e => setRegEmail(e.target.value)}
+                      placeholder="direction@entreprise.ma"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Mot de passe <span className="text-rose-500">*</span> <span className="text-[11px] font-normal text-slate-500">(min. 6 car.)</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={regPassword}
+                      onChange={e => setRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Ville d'implantation principale <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={regCity}
+                      onChange={e => setRegCity(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 bg-white"
+                    >
+                      {MOROCCAN_CITIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Secteur d'activité <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={regSector}
+                      onChange={e => setRegSector(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 bg-white"
+                    >
+                      {MOROCCAN_SECTORS.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Numéro de téléphone / WhatsApp <span className="text-[11px] font-normal text-slate-500">(facultatif, pour assistance technique)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={e => setRegPhone(e.target.value)}
+                      placeholder="+212 6..."
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                    />
+                  </div>
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg">Métallurgie de l'Oriental SA</h3>
-                <p className="text-xs text-slate-500 mt-1">Usine Selouane Nador. Export Barres béton (CN 7214 20 00).</p>
-                <div className="mt-4 space-y-1 text-xs text-slate-700">
-                  <p>👤 <strong>Mehdi Chraibi</strong> (Directeur Usine)</p>
-                  <p>🇪🇺 Émissions intrinsèques directes/indirectes + dossier UE</p>
+
+                <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center space-x-2 text-xs text-slate-500">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>0 MAD • Données souveraines hébergées au Maroc • Aucun engagement</span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={regLoading}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>{regLoading ? 'Création de votre espace...' : 'Activer Mon Espace & Commencer'}</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-200" />
+                  </button>
                 </div>
-              </div>
-              <button
-                disabled={loadingDemo}
-                onClick={() => handleQuickDemoLogin('export@metal-oriental.ma', 'MetalExport2026!', 'org-metal-oriental')}
-                className="w-full py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-sm"
-              >
-                <span>Accéder au Module MACF / CBAM</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-6 max-w-md mx-auto">
+                {loginError && (
+                  <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
+                    <span className="font-bold">⚠️</span>
+                    <span>{loginError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Email professionnel
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    placeholder="direction@entreprise.ma"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{loginLoading ? 'Connexion...' : 'Accéder à mon espace entreprise'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </section>
@@ -1340,21 +1606,25 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-2 w-full sm:w-auto">
-                {onStartTrial && (
-                  <button
-                    onClick={onStartTrial}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-                  >
-                    <Sparkles className="w-4 h-4 text-slate-950" />
-                    <span>Enregistrer dans mon Bilan</span>
-                  </button>
-                )}
-                <a
-                  href="#demo-accounts"
+                <button
+                  onClick={() => {
+                    setAuthTab('register');
+                    setShowAuthModal(true);
+                  }}
+                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+                >
+                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <span>Enregistrer dans mon Bilan (Gratuit)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthTab('login');
+                    setShowAuthModal(true);
+                  }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 text-center transition"
                 >
-                  Voir les Espaces Démo Prêts
-                </a>
+                  Se connecter à mon espace
+                </button>
               </div>
             </div>
 
@@ -1497,8 +1767,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               {lang === 'en'
-                ? 'From free 3-hour demo evaluation to heavy industry multisite deployments. Deterministic calculations, ISO 14064-1 compliance, and official EU CBAM declarations.'
-                : 'De l’évaluation démo gratuite de 3 heures aux grands comptes industriels multisites. Tous les calculs sont 100% déterministes et conformes ISO 14064-1 & Déclaration MACF Europe.'}
+                ? 'From free corporate start to heavy industry multisite deployments. Deterministic calculations, ISO 14064-1 compliance, and official EU CBAM declarations.'
+                : 'De l’inscription gratuite directe aux déploiements industriels multisites. Tous les calculs sont 100% déterministes et conformes ISO 14064-1 & Déclaration MACF Europe.'}
             </p>
 
             {/* Sélecteur de rythme de facturation */}
@@ -1535,59 +1805,68 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
           {/* Grille des 4 cartes d'offres en MAD */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* 1. Découverte */}
-            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
-              <div className="space-y-4">
+            {/* 1. Compte Entreprise Gratuit */}
+            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-700/60 flex flex-col justify-between space-y-6 hover:shadow-lg transition relative">
+              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-emerald-800 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-sm">
+                {lang === 'en' ? 'Recommended • Free Start' : 'Recommandé • Inscription Gratuite'}
+              </div>
+
+              <div className="space-y-4 pt-1">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    {lang === 'en' ? 'Demo • 3h Window' : 'Démo • 3 Heures'}
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                    {lang === 'en' ? 'Enterprise • Immediate Access' : 'Compte Entreprise • Accès Immédiat'}
                   </span>
                   <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
-                    {lang === 'en' ? 'Discovery Demo' : 'Pack Découverte'}
+                    {lang === 'en' ? 'Free Start' : 'Démarrage Gratuit'}
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                     {lang === 'en'
-                      ? '3 hours of free access to evaluate the calculation engine and explore sector questions.'
-                      : 'Accès d’évaluation de 3 heures pour tester le moteur déterministe et explorer les formulaires.'}
+                      ? 'Direct free registration to start your corporate carbon accounting immediately with official Moroccan factors.'
+                      : 'Inscription gratuite directe pour débuter immédiatement votre comptabilité carbone avec les facteurs officiels marocains.'}
                   </p>
                 </div>
 
-                <div className="p-4 bg-white rounded-2xl border border-slate-200">
-                  <div className="text-3xl font-black text-slate-900 font-mono">0 MAD</div>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {lang === 'en' ? 'Free for 3 hours of testing' : 'Gratuit pendant 3h de test'}
+                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200">
+                  <div className="text-3xl font-black text-emerald-950 font-mono">0 MAD</div>
+                  <span className="text-[10px] text-emerald-800 font-bold">
+                    {lang === 'en' ? 'Free corporate account • No credit card' : 'Compte gratuit • Sans carte bancaire'}
                   </span>
                 </div>
 
                 <ul className="space-y-2.5 text-xs text-slate-700">
                   <li className="flex items-start space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>3 heures d'accès d'évaluation démo</span>
+                    <span>Accès illimité sans limite de temps</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Simulateur factures ONEE & carburants</span>
+                    <span>Inventaire Scopes 1, 2 et 3 complet</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>1 Questionnaire sectoriel guidé</span>
+                    <span>670+ facteurs d'émission officiels marocains</span>
                   </li>
                   <li className="flex items-start space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Rapport PDF avec réserves méthodologiques</span>
+                    <span>Saisie factures ONEE, carburants et intrants</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Exercice 2026 configuré immédiatement</span>
                   </li>
                 </ul>
               </div>
 
               <div>
-                {onStartTrial && (
-                  <button
-                    onClick={onStartTrial}
-                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
-                  >
-                    {lang === 'en' ? 'Start Free Trial (3h)' : 'Démarrer l’essai gratuit (3h)'}
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setAuthTab('register');
+                    setShowAuthModal(true);
+                  }}
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow transition text-center block"
+                >
+                  {lang === 'en' ? 'Create Free Company Account' : 'Créer mon compte gratuit'}
+                </button>
               </div>
             </div>
 
@@ -2095,6 +2374,246 @@ export const LandingView: React.FC<LandingViewProps> = ({
         isPaywallExpired={false}
         onSubscriptionSuccess={(u, orgs) => onLoginSuccess(u, orgs)}
       />
+
+      {/* Modal Inscription Entreprise & Connexion */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl border border-slate-300 shadow-2xl max-w-xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
+            {/* Bouton Fermer */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              aria-label="Fermer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* En-tête */}
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center text-amber-300 font-bold shadow">
+                <Globe2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900">
+                  Atlas <span className="text-emerald-800">Carbone</span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  {authTab === 'register'
+                    ? 'Inscription gratuite pour entreprises marocaines'
+                    : 'Connexion à votre espace d’inventaire carbone'}
+                </p>
+              </div>
+            </div>
+
+            {/* Onglets */}
+            <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 mb-6">
+              <button
+                type="button"
+                onClick={() => setAuthTab('register')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                  authTab === 'register'
+                    ? 'bg-emerald-800 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Créer un compte</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthTab('login')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                  authTab === 'login'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Se connecter</span>
+              </button>
+            </div>
+
+            {authTab === 'register' ? (
+              <form onSubmit={handleRegister} className="space-y-4">
+                {regError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
+                    <span className="font-bold">⚠️</span>
+                    <span>{regError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Nom de l’entreprise / Raison sociale <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regCompanyName}
+                    onChange={e => setRegCompanyName(e.target.value)}
+                    placeholder="Ex: Confection Atlas SARL"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Nom & Prénom <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regFullName}
+                      onChange={e => setRegFullName(e.target.value)}
+                      placeholder="Ex: Tariq El Alami"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Email professionnel <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={regEmail}
+                      onChange={e => setRegEmail(e.target.value)}
+                      placeholder="contact@entreprise.ma"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Mot de passe <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={regPassword}
+                      onChange={e => setRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Ville <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={regCity}
+                      onChange={e => setRegCity(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700 bg-white"
+                    >
+                      {MOROCCAN_CITIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Secteur d'activité <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={regSector}
+                    onChange={e => setRegSector(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700 bg-white"
+                  >
+                    {MOROCCAN_SECTORS.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Numéro de Téléphone / WhatsApp <span className="text-slate-400 font-normal">(facultatif)</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={e => setRegPhone(e.target.value)}
+                    placeholder="+212 6..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+
+                <div className="pt-3">
+                  <button
+                    type="submit"
+                    disabled={regLoading}
+                    className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>{regLoading ? 'Création de votre compte...' : 'Démarrer Mon Bilan Carbone (0 MAD)'}</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-200" />
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-slate-500 text-center pt-2">
+                  🔒 Données souveraines et déterministes hébergées au Maroc.
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4">
+                {loginError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
+                    <span className="font-bold">⚠️</span>
+                    <span>{loginError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Email professionnel
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    placeholder="direction@entreprise.ma"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{loginLoading ? 'Connexion...' : 'Accéder à mon espace'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

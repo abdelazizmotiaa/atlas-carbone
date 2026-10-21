@@ -81,6 +81,20 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(credentials)
       }),
+    register: (data: {
+      email: string;
+      password: string;
+      full_name: string;
+      company_name: string;
+      city?: string;
+      sector?: string;
+      phone?: string;
+      ice?: string;
+    }) =>
+      request<{ token: string; user: any; organizations: any[] }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
     me: () => request<{ user: any; organizations: any[] }>('/auth/me')
   },
   organizations: {

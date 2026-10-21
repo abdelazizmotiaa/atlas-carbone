@@ -273,6 +273,123 @@ app.get('/api/health', (req, res) => {
 // 1. Authentification & Utilisateur
 // -------------------------------------------------------------
 
+app.post('/api/auth/register', (req, res) => {
+  const {
+    email,
+    password,
+    full_name,
+    company_name,
+    city = 'Casablanca',
+    sector = 'Industrie manufacturière',
+    phone,
+    ice
+  } = req.body;
+
+  if (!email || !password || !full_name || !company_name) {
+    return res.status(400).json({ error: "L'email, le mot de passe, votre nom complet et le nom de l'entreprise sont requis pour créer votre compte." });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Le mot de passe doit comporter au moins 6 caractères." });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+  if (existingUser) {
+    return res.status(400).json({ error: "Un compte existe déjà avec cette adresse email. Veuillez vous connecter." });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const passwordHash = bcrypt.hashSync(password, salt);
+  const userId = `usr-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const orgId = `org-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const siteId = `site-${Date.now()}`;
+  const periodId = `per-${Date.now()}`;
+  const subId = `sub-${Date.now()}`;
+  const now = new Date().toISOString();
+  const currentYear = new Date().getFullYear();
+
+  try {
+    db.exec('BEGIN');
+
+    // 1. Utilisateur
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, full_name, is_superadmin, created_at)
+      VALUES (?, ?, ?, ?, 0, ?)
+    `).run(userId, normalizedEmail, passwordHash, full_name.trim(), now);
+
+    // 2. Entreprise / Organisation
+    db.prepare(`
+      INSERT INTO organizations (id, name, legal_type, ice, city, sector, onboarding_step, onboarding_completed, created_at)
+      VALUES (?, ?, 'SARL', ?, ?, ?, 1, 0, ?)
+    `).run(orgId, company_name.trim(), ice?.trim() || null, city.trim(), sector.trim(), now);
+
+    // 3. Adhésion Admin
+    db.prepare(`
+      INSERT INTO memberships (id, user_id, organization_id, role, created_at)
+      VALUES (?, ?, ?, 'admin', ?)
+    `).run(`mem-${Date.now()}`, userId, orgId, now);
+
+    // 4. Site principal
+    db.prepare(`
+      INSERT INTO sites (id, organization_id, name, city, address, created_at)
+      VALUES (?, ?, 'Siège & Site principal', ?, '', ?)
+    `).run(siteId, orgId, city.trim(), now);
+
+    // 5. Exercice d'inventaire GES ouvert immédiatement pour saisie
+    db.prepare(`
+      INSERT INTO reporting_periods (
+        id, organization_id, name, year, start_date, end_date,
+        consolidation_approach, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'operational_control', 'collection', ?)
+    `).run(periodId, orgId, `Exercice ${currentYear}`, currentYear, `${currentYear}-01-01`, `${currentYear}-12-31`, now);
+
+    // 6. Abonnement actif immédiat
+    db.prepare(`
+      INSERT INTO subscriptions (
+        id, organization_id, plan_name, status, sites_limit, users_limit, cbam_access, current_period_end, created_at
+      ) VALUES (?, ?, 'essentiel', 'active', 5, 5, 1, ?, ?)
+    `).run(subId, orgId, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), now);
+
+    db.exec('COMMIT');
+  } catch (err: any) {
+    db.exec('ROLLBACK');
+    console.error("Erreur enregistrement entreprise:", err);
+    return res.status(500).json({ error: "Erreur lors de la création de l'espace entreprise." });
+  }
+
+  const tokenPayload: AuthUser = {
+    id: userId,
+    email: normalizedEmail,
+    full_name: full_name.trim(),
+    is_superadmin: 0
+  };
+
+  const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+
+  logAudit(orgId, userId, 'USER_REGISTER', 'users', userId, {
+    email: normalizedEmail,
+    company_name: company_name.trim(),
+    sector: sector.trim(),
+    city: city.trim(),
+    phone: phone?.trim() || null
+  });
+
+  const orgs = [{
+    id: orgId,
+    name: company_name.trim(),
+    sector: sector.trim(),
+    city: city.trim(),
+    role: 'admin'
+  }];
+
+  return res.status(201).json({
+    token,
+    user: tokenPayload,
+    organizations: orgs
+  });
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
