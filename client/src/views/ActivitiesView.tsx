@@ -24,7 +24,11 @@ import {
   Lock,
   Upload,
   Paperclip,
-  FileCheck
+  FileCheck,
+  Building2,
+  Edit3,
+  MapPin,
+  User
 } from 'lucide-react';
 import { ActivityRecord, Site, EmissionFactor, CalculationTrace } from '../types.js';
 import { api } from '../api.js';
@@ -71,6 +75,110 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [uploadTargetActLabel, setUploadTargetActLabel] = useState<string>('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
+
+  // Modal Gestion Multi-Sites & Usines
+  const [showSitesModal, setShowSitesModal] = useState(false);
+  const [sitesList, setSitesList] = useState<any[]>(sites);
+  const [membersList, setMembersList] = useState<any[]>([]);
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
+  const [siteFormName, setSiteFormName] = useState('');
+  const [siteFormCity, setSiteFormCity] = useState('');
+  const [siteFormAddress, setSiteFormAddress] = useState('');
+  const [siteFormManagerId, setSiteFormManagerId] = useState('');
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [siteError, setSiteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSitesList(sites);
+  }, [sites]);
+
+  const openSitesModal = async () => {
+    setShowSitesModal(true);
+    setSiteError(null);
+    try {
+      const [freshSites, freshMembers] = await Promise.all([
+        api.sites.list(orgId),
+        api.organizations.getMembers(orgId).catch(() => [])
+      ]);
+      setSitesList(freshSites);
+      setMembersList(freshMembers);
+    } catch (err: any) {
+      console.error("Erreur chargement sites/membres:", err);
+    }
+  };
+
+  const handleSaveSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteFormName || !siteFormCity) {
+      setSiteError("Nom et ville requis.");
+      return;
+    }
+    setSiteLoading(true);
+    setSiteError(null);
+    try {
+      if (editingSiteId) {
+        await api.sites.update(orgId, editingSiteId, {
+          name: siteFormName,
+          city: siteFormCity,
+          address: siteFormAddress,
+          manager_user_id: siteFormManagerId || null
+        });
+      } else {
+        await api.sites.create(orgId, {
+          name: siteFormName,
+          city: siteFormCity,
+          address: siteFormAddress,
+          manager_user_id: siteFormManagerId || null
+        });
+      }
+      setEditingSiteId(null);
+      setSiteFormName('');
+      setSiteFormCity('');
+      setSiteFormAddress('');
+      setSiteFormManagerId('');
+      const updated = await api.sites.list(orgId);
+      setSitesList(updated);
+      onRefreshOverview();
+    } catch (err: any) {
+      setSiteError(err.message);
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  const handleDeleteSite = async (siteId: string, siteName: string) => {
+    if (!confirm(`Confirmez-vous la suppression du site « ${siteName} » ?`)) return;
+    setSiteLoading(true);
+    setSiteError(null);
+    try {
+      await api.sites.delete(orgId, siteId);
+      const updated = await api.sites.list(orgId);
+      setSitesList(updated);
+      onRefreshOverview();
+    } catch (err: any) {
+      setSiteError(err.message);
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  const startEditSite = (s: any) => {
+    setEditingSiteId(s.id);
+    setSiteFormName(s.name);
+    setSiteFormCity(s.city);
+    setSiteFormAddress(s.address || '');
+    setSiteFormManagerId(s.manager_user_id || '');
+    setSiteError(null);
+  };
+
+  const cancelEditSite = () => {
+    setEditingSiteId(null);
+    setSiteFormName('');
+    setSiteFormCity('');
+    setSiteFormAddress('');
+    setSiteFormManagerId('');
+    setSiteError(null);
+  };
 
   // Assistant Factures & Convertisseur
   const [billPresets, setBillPresets] = useState<any[]>([]);
@@ -366,6 +474,15 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           >
             <AlertCircle className="w-4 h-4 text-amber-700" />
             <span>Déclarer un poste non quantifié</span>
+          </button>
+
+          <button
+            onClick={openSitesModal}
+            className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+            title="Gérer les sites, usines et responsables locaux"
+          >
+            <Building2 className="w-4 h-4 text-brand-700" />
+            <span>Sites & Usines ({sitesList.length})</span>
           </button>
 
           <button
@@ -1526,6 +1643,204 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Gestion Multi-Sites & Usines d'Exploitation */}
+      {showSitesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Building2 className="w-5 h-5 text-brand-800" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Sites & Usines d'Exploitation</h3>
+                  <p className="text-xs text-slate-500">Confinement territorial et gestion des responsables de site (site_manager)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSitesModal(false);
+                  cancelEditSite();
+                }}
+                className="p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            {siteError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{siteError}</span>
+              </div>
+            )}
+
+            {/* Formulaire Ajout / Édition Site */}
+            <form onSubmit={handleSaveSite} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800">
+                  {editingSiteId ? 'Modifier les informations du site' : 'Ajouter un nouveau site ou complexe industriel'}
+                </span>
+                {editingSiteId && (
+                  <button
+                    type="button"
+                    onClick={cancelEditSite}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline"
+                  >
+                    Annuler la modification
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nom du site *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="ex: Usine Tanger Freezone"
+                    value={siteFormName}
+                    onChange={e => setSiteFormName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Ville marocaine *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="ex: Tanger, Casablanca, Nador..."
+                    value={siteFormCity}
+                    onChange={e => setSiteFormCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Adresse ou Zone Industrielle</label>
+                  <input
+                    type="text"
+                    placeholder="ex: Ilot 12, TFZ Aéroport"
+                    value={siteFormAddress}
+                    onChange={e => setSiteFormAddress(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Responsable de site affecté (site_manager)</label>
+                  <select
+                    value={siteFormManagerId}
+                    onChange={e => setSiteFormManagerId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="">-- Aucun responsable assigné --</option>
+                    {membersList.map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.full_name} ({m.email}) [{m.role}]
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={siteLoading}
+                  className="px-4 py-2 bg-brand-800 hover:bg-brand-900 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>{siteLoading ? 'Enregistrement...' : editingSiteId ? 'Mettre à jour le site' : 'Créer le site'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Liste des Sites Existants */}
+            <div className="space-y-2">
+              <span className="font-bold text-slate-800 text-xs block">
+                Sites enregistrés ({sitesList.length})
+              </span>
+
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                {sitesList.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400">
+                    Aucun site enregistré pour cette organisation.
+                  </div>
+                ) : (
+                  sitesList.map((s: any) => (
+                    <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-slate-900 text-sm">{s.name}</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px]">
+                            {s.city}
+                          </span>
+                        </div>
+                        {s.address && (
+                          <p className="text-slate-500 text-[11px] flex items-center space-x-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{s.address}</span>
+                          </p>
+                        )}
+                        <p className="text-slate-500 text-[11px] flex items-center space-x-1">
+                          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>
+                            Responsable : <strong>{s.manager_name || 'Non assigné'}</strong>
+                            {s.manager_email ? ` (${s.manager_email})` : ''}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <span className="text-slate-400 block text-[11px]">Émissions site :</span>
+                          <span className="font-extrabold text-brand-900 text-xs">
+                            {(s.total_tco2e || 0).toFixed(2)} tCO2e
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {s.activities_count || 0} activité(s)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => startEditSite(s)}
+                            className="p-1.5 text-slate-500 hover:text-brand-800 hover:bg-slate-100 rounded-lg transition"
+                            title="Modifier ce site"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSite(s.id, s.name)}
+                            disabled={siteLoading}
+                            className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                            title="Supprimer ce site"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSitesModal(false);
+                  cancelEditSite();
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}

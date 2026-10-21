@@ -294,6 +294,17 @@ app.get('/api/organizations', authenticateToken, (req, res) => {
   res.json(orgsStmt.all(req.user!.id));
 });
 
+app.get('/api/organizations/:orgId/members', authenticateToken, requireTenant, (req, res) => {
+  const members = db.prepare(`
+    SELECT u.id, u.email, u.full_name, m.role, m.created_at
+    FROM memberships m
+    JOIN users u ON m.user_id = u.id
+    WHERE m.organization_id = ?
+    ORDER BY u.full_name ASC
+  `).all(req.organizationId!);
+  res.json(members);
+});
+
 // Suivi et persistance de l'onboarding guidé par entreprise
 app.get('/api/organizations/:orgId/onboarding', authenticateToken, requireTenant, (req, res) => {
   const org: any = db.prepare('SELECT onboarding_step, onboarding_completed FROM organizations WHERE id = ?').get(req.organizationId!);
@@ -543,25 +554,101 @@ app.post('/api/organizations/:orgId/periods/:periodId/close', authenticateToken,
 });
 
 // -------------------------------------------------------------
-// 4. Sites
+// 4. Sites d'Exploitation & Gouvernance Multi-Sites
 // -------------------------------------------------------------
 
 app.get('/api/organizations/:orgId/sites', authenticateToken, requireTenant, (req, res) => {
-  const sites = db.prepare('SELECT * FROM sites WHERE organization_id = ?').all(req.organizationId!);
+  const orgId = req.organizationId!;
+  let query = `
+    SELECT s.*, u.full_name as manager_name, u.email as manager_email,
+           (SELECT COUNT(*) FROM activity_records WHERE site_id = s.id AND status = 'active') as activities_count,
+           (SELECT COALESCE(SUM(emission_t_co2e), 0) FROM activity_records WHERE site_id = s.id AND status = 'active') as total_tco2e
+    FROM sites s
+    LEFT JOIN users u ON s.manager_user_id = u.id
+    WHERE s.organization_id = ?
+  `;
+  const params: any[] = [orgId];
+
+  // Si le rôle est site_manager, confiner à son propre site
+  if (req.userRole === 'site_manager') {
+    query += ' AND s.manager_user_id = ?';
+    params.push(req.user!.id);
+  }
+
+  query += ' ORDER BY s.name ASC';
+  const sites = db.prepare(query).all(...params);
   res.json(sites);
 });
 
 app.post('/api/organizations/:orgId/sites', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
-  const { name, city, address } = req.body;
+  const { name, city, address, manager_user_id } = req.body;
   if (!name || !city) return res.status(400).json({ error: "Nom et ville requis pour le site." });
 
   const id = `site-${Date.now()}`;
   db.prepare(`
-    INSERT INTO sites (id, organization_id, name, city, address, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, req.organizationId!, name, city, address || '', new Date().toISOString());
+    INSERT INTO sites (id, organization_id, name, city, address, manager_user_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, req.organizationId!, name, city, address || '', manager_user_id || null, new Date().toISOString());
 
-  res.status(201).json({ id, name, city });
+  logAudit(req.organizationId!, req.user!.id, 'CREATE_SITE', 'sites', id, { name, city, manager_user_id });
+
+  const created = db.prepare(`
+    SELECT s.*, u.full_name as manager_name, u.email as manager_email
+    FROM sites s
+    LEFT JOIN users u ON s.manager_user_id = u.id
+    WHERE s.id = ?
+  `).get(id);
+
+  res.status(201).json(created);
+});
+
+app.put('/api/organizations/:orgId/sites/:siteId', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { siteId } = req.params;
+  const { name, city, address, manager_user_id } = req.body;
+  const orgId = req.organizationId!;
+
+  const existing: any = db.prepare('SELECT * FROM sites WHERE id = ? AND organization_id = ?').get(siteId, orgId);
+  if (!existing) return res.status(404).json({ error: "Site introuvable." });
+
+  db.prepare(`
+    UPDATE sites
+    SET name = COALESCE(?, name),
+        city = COALESCE(?, city),
+        address = COALESCE(?, address),
+        manager_user_id = ?
+    WHERE id = ? AND organization_id = ?
+  `).run(name || null, city || null, address !== undefined ? address : null, manager_user_id !== undefined ? (manager_user_id || null) : existing.manager_user_id, siteId, orgId);
+
+  logAudit(orgId, req.user!.id, 'UPDATE_SITE', 'sites', siteId, { name, city, manager_user_id });
+
+  const updated = db.prepare(`
+    SELECT s.*, u.full_name as manager_name, u.email as manager_email
+    FROM sites s
+    LEFT JOIN users u ON s.manager_user_id = u.id
+    WHERE s.id = ?
+  `).get(siteId);
+
+  res.json(updated);
+});
+
+app.delete('/api/organizations/:orgId/sites/:siteId', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { siteId } = req.params;
+  const orgId = req.organizationId!;
+
+  const site: any = db.prepare('SELECT * FROM sites WHERE id = ? AND organization_id = ?').get(siteId, orgId);
+  if (!site) return res.status(404).json({ error: "Site introuvable." });
+
+  const actCount: any = db.prepare('SELECT COUNT(*) as count FROM activity_records WHERE site_id = ?').get(siteId);
+  if (actCount && actCount.count > 0) {
+    return res.status(400).json({
+      error: `Impossible de supprimer ce site : ${actCount.count} activité(s) y sont rattachées. Réaffectez ou supprimez d'abord ces activités.`
+    });
+  }
+
+  db.prepare('DELETE FROM sites WHERE id = ? AND organization_id = ?').run(siteId, orgId);
+  logAudit(orgId, req.user!.id, 'DELETE_SITE', 'sites', siteId, { name: site.name });
+
+  res.json({ success: true, message: `Site '${site.name}' supprimé avec succès.` });
 });
 
 // -------------------------------------------------------------
@@ -621,6 +708,16 @@ app.post('/api/organizations/:orgId/activities', authenticateToken, requireTenan
   if (!period) return res.status(404).json({ error: "Exercice introuvable." });
   if (period.status === 'closed') {
     return res.status(403).json({ error: "Impossible de modifier un exercice clôturé. Créez une révision ou un nouvel exercice." });
+  }
+
+  // Contrôle géographique strict si le rôle est site_manager
+  if (req.userRole === 'site_manager') {
+    const isManagerOfSite: any = db.prepare('SELECT id FROM sites WHERE id = ? AND organization_id = ? AND manager_user_id = ?').get(site_id, orgId, req.user!.id);
+    if (!isManagerOfSite) {
+      return res.status(403).json({
+        error: "Accès refusé : en tant que responsable de site (site_manager), vous ne pouvez saisir des activités que sur votre site géographique assigné."
+      });
+    }
   }
 
   // Récupérer le facteur d'émission
@@ -1181,7 +1278,10 @@ app.get('/api/organizations/:orgId/periods/:periodId/reviews', authenticateToken
 app.post('/api/organizations/:orgId/periods/:periodId/reviews', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'auditor']), (req, res) => {
   const { periodId } = req.params;
   const { status, comment } = req.body;
-  const allowed = ['draft', 'to_complete', 'ready_for_review', 'reviewed_internal', 'locked'];
+  const allowed = [
+    'draft', 'collection', 'in_review', 'corrections_requested', 'validated', 'closed',
+    'to_complete', 'ready_for_review', 'reviewed_internal', 'locked'
+  ];
 
   if (!status || !allowed.includes(status)) {
     return res.status(400).json({ error: `Statut invalide. Statuts autorisés : ${allowed.join(', ')}` });
@@ -1194,10 +1294,52 @@ app.post('/api/organizations/:orgId/periods/:periodId/reviews', authenticateToke
   `).run(id, periodId, req.user!.id, req.user!.full_name, status, comment || '', new Date().toISOString());
 
   // Mettre à jour le statut dans reporting_periods
-  db.prepare('UPDATE reporting_periods SET status = ? WHERE id = ?').run(status, periodId);
+  if (status === 'closed' || status === 'locked') {
+    db.prepare('UPDATE reporting_periods SET status = ?, closed_at = ?, closed_by = ? WHERE id = ?')
+      .run('closed', new Date().toISOString(), req.user!.id, periodId);
+  } else {
+    db.prepare('UPDATE reporting_periods SET status = ?, closed_at = NULL, closed_by = NULL WHERE id = ?')
+      .run(status, periodId);
+  }
+
   logAudit(req.organizationId!, req.user!.id, 'UPDATE_DOSSIER_STATE', 'reporting_periods', periodId, { status, comment });
 
-  res.status(201).json({ id, status, comment });
+  res.status(201).json({ id, status, comment, created_at: new Date().toISOString() });
+});
+
+app.put('/api/organizations/:orgId/periods/:periodId/status', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'auditor']), (req, res) => {
+  const { periodId, orgId } = req.params;
+  const { status, comment } = req.body;
+  const allowed = [
+    'draft', 'collection', 'in_review', 'corrections_requested', 'validated', 'closed',
+    'to_complete', 'ready_for_review', 'reviewed_internal', 'locked'
+  ];
+
+  if (!status || !allowed.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Statuts autorisés : ${allowed.join(', ')}` });
+  }
+
+  const period: any = db.prepare('SELECT * FROM reporting_periods WHERE id = ? AND organization_id = ?').get(periodId, orgId);
+  if (!period) return res.status(404).json({ error: "Exercice introuvable." });
+
+  if (status === 'closed' || status === 'locked') {
+    db.prepare('UPDATE reporting_periods SET status = ?, closed_at = ?, closed_by = ? WHERE id = ?')
+      .run('closed', new Date().toISOString(), req.user!.id, periodId);
+  } else {
+    db.prepare('UPDATE reporting_periods SET status = ?, closed_at = NULL, closed_by = NULL WHERE id = ?')
+      .run(status, periodId);
+  }
+
+  const revId = `rev-${Date.now()}`;
+  db.prepare(`
+    INSERT INTO dossier_reviews (id, reporting_period_id, reviewer_id, reviewer_name, status, comment, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(revId, periodId, req.user!.id, req.user!.full_name, status, comment || `Statut passé à '${status}'`, new Date().toISOString());
+
+  logAudit(orgId, req.user!.id, 'UPDATE_PERIOD_STATUS', 'reporting_periods', periodId, { status, comment });
+
+  const updated = db.prepare('SELECT * FROM reporting_periods WHERE id = ?').get(periodId);
+  res.json({ success: true, period: updated });
 });
 
 // 6.h Robots.txt et Sitemap.xml pour le référencement naturel
@@ -1279,25 +1421,190 @@ app.get('/api/cbam/dossiers', authenticateToken, requireTenant, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 8. Plan de Réduction & Simulations
+// 8. Plan de Réduction, Trajectoire SBTi / CDN & Simulations
 // -------------------------------------------------------------
 
-app.get('/api/reduction/actions', authenticateToken, requireTenant, (req, res) => {
+app.get(['/api/reduction/actions', '/api/organizations/:orgId/reduction-actions'], authenticateToken, requireTenant, (req, res) => {
   const actions = db.prepare('SELECT * FROM reduction_actions WHERE organization_id = ? ORDER BY target_year ASC').all(req.organizationId!);
   res.json(actions);
 });
 
-app.post('/api/reduction/actions', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
-  const { title, category, responsible, cost_mad, annual_savings_tco2e, target_year } = req.body;
+app.post(['/api/reduction/actions', '/api/organizations/:orgId/reduction-actions'], authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { title, category, responsible, cost_mad, annual_savings_tco2e, target_year, site_id, reporting_period_id } = req.body;
   if (!title || !target_year) return res.status(400).json({ error: "Titre et année cible requis." });
 
   const id = `act-red-${Date.now()}`;
   db.prepare(`
-    INSERT INTO reduction_actions (id, organization_id, title, category, responsible, cost_mad, annual_savings_tco2e, target_year, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?)
-  `).run(id, req.organizationId!, title, category || 'Général', responsible || '', Number(cost_mad || 0), Number(annual_savings_tco2e || 0), Number(target_year), new Date().toISOString());
+    INSERT INTO reduction_actions (id, organization_id, reporting_period_id, site_id, title, category, responsible, cost_mad, annual_savings_tco2e, target_year, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'proposed', ?)
+  `).run(id, req.organizationId!, reporting_period_id || null, site_id || null, title, category || 'Général', responsible || '', Number(cost_mad || 0), Number(annual_savings_tco2e || 0), Number(target_year), new Date().toISOString());
 
-  res.status(201).json({ id, title, target_year });
+  logAudit(req.organizationId!, req.user!.id, 'CREATE_REDUCTION_ACTION', 'reduction_actions', id, { title, target_year, annual_savings_tco2e });
+
+  const created = db.prepare('SELECT * FROM reduction_actions WHERE id = ?').get(id);
+  res.status(201).json(created);
+});
+
+app.put(['/api/reduction/actions/:actionId', '/api/organizations/:orgId/reduction-actions/:actionId'], authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { actionId } = req.params;
+  const orgId = req.organizationId!;
+  const existing: any = db.prepare('SELECT * FROM reduction_actions WHERE id = ? AND organization_id = ?').get(actionId, orgId);
+  if (!existing) return res.status(404).json({ error: "Action introuvable." });
+
+  const { title, category, responsible, cost_mad, annual_savings_tco2e, target_year, status, site_id, reporting_period_id } = req.body;
+
+  db.prepare(`
+    UPDATE reduction_actions
+    SET title = COALESCE(?, title),
+        category = COALESCE(?, category),
+        responsible = COALESCE(?, responsible),
+        cost_mad = CASE WHEN ? IS NOT NULL THEN ? ELSE cost_mad END,
+        annual_savings_tco2e = CASE WHEN ? IS NOT NULL THEN ? ELSE annual_savings_tco2e END,
+        target_year = CASE WHEN ? IS NOT NULL THEN ? ELSE target_year END,
+        status = COALESCE(?, status),
+        site_id = CASE WHEN ? IS NOT NULL THEN ? ELSE site_id END,
+        reporting_period_id = CASE WHEN ? IS NOT NULL THEN ? ELSE reporting_period_id END
+    WHERE id = ? AND organization_id = ?
+  `).run(
+    title || null,
+    category || null,
+    responsible || null,
+    cost_mad !== undefined ? 1 : null, Number(cost_mad || 0),
+    annual_savings_tco2e !== undefined ? 1 : null, Number(annual_savings_tco2e || 0),
+    target_year !== undefined ? 1 : null, Number(target_year || 0),
+    status || null,
+    site_id !== undefined ? 1 : null, site_id || null,
+    reporting_period_id !== undefined ? 1 : null, reporting_period_id || null,
+    actionId,
+    orgId
+  );
+
+  logAudit(orgId, req.user!.id, 'UPDATE_REDUCTION_ACTION', 'reduction_actions', actionId, { title, status, annual_savings_tco2e });
+
+  const updated = db.prepare('SELECT * FROM reduction_actions WHERE id = ?').get(actionId);
+  res.json(updated);
+});
+
+app.delete(['/api/reduction/actions/:actionId', '/api/organizations/:orgId/reduction-actions/:actionId'], authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { actionId } = req.params;
+  const orgId = req.organizationId!;
+  const existing: any = db.prepare('SELECT * FROM reduction_actions WHERE id = ? AND organization_id = ?').get(actionId, orgId);
+  if (!existing) return res.status(404).json({ error: "Action introuvable." });
+
+  db.prepare('DELETE FROM reduction_actions WHERE id = ? AND organization_id = ?').run(actionId, orgId);
+  logAudit(orgId, req.user!.id, 'DELETE_REDUCTION_ACTION', 'reduction_actions', actionId, { title: existing.title });
+
+  res.json({ success: true, message: "Action supprimée du plan de réduction." });
+});
+
+app.get('/api/organizations/:orgId/trajectory', authenticateToken, requireTenant, (req, res) => {
+  const orgId = req.organizationId!;
+  const targetYear = req.query.targetYear ? Number(req.query.targetYear) : 2030;
+  const reductionPct = req.query.reductionPct ? Number(req.query.reductionPct) : 30; // ex: 30% d'abattement
+  const reqBaselineYear = req.query.baselineYear ? Number(req.query.baselineYear) : null;
+
+  // 1. Récupérer tous les exercices avec leurs totaux d'émissions
+  const periods: any[] = db.prepare(`
+    SELECT p.id, p.name, p.year, p.status,
+           COALESCE(SUM(a.emission_t_co2e), 0) as total_tco2e,
+           COALESCE(SUM(CASE WHEN a.scope = 1 THEN a.emission_t_co2e ELSE 0 END), 0) as scope1_tco2e,
+           COALESCE(SUM(CASE WHEN a.scope = 2 THEN a.emission_t_co2e ELSE 0 END), 0) as scope2_tco2e,
+           COALESCE(SUM(CASE WHEN a.scope = 3 THEN a.emission_t_co2e ELSE 0 END), 0) as scope3_tco2e
+    FROM reporting_periods p
+    LEFT JOIN activity_records a ON a.reporting_period_id = p.id AND a.status = 'active'
+    WHERE p.organization_id = ?
+    GROUP BY p.id, p.name, p.year, p.status
+    ORDER BY p.year ASC
+  `).all(orgId);
+
+  // 2. Déterminer l'année de référence (Baseline)
+  let baselinePeriod = periods.find(p => reqBaselineYear ? p.year === reqBaselineYear : p.total_tco2e > 0);
+  if (!baselinePeriod && periods.length > 0) {
+    baselinePeriod = periods[0];
+  }
+
+  const baselineYear = baselinePeriod ? baselinePeriod.year : 2024;
+  const baselineEmissions = baselinePeriod ? Number(baselinePeriod.total_tco2e) : 0;
+
+  // 3. Récupérer les actions du plan de réduction
+  const actions: any[] = db.prepare(`
+    SELECT * FROM reduction_actions
+    WHERE organization_id = ?
+    ORDER BY target_year ASC
+  `).all(orgId);
+
+  // 4. Calcul de l'objectif cible (ex: -30% ou -42% aligné SBTi / CDN Maroc 2030)
+  const targetEmissions = Math.max(0, baselineEmissions * (1 - (reductionPct / 100)));
+  const targetReductionTco2e = Math.max(0, baselineEmissions - targetEmissions);
+
+  // Cumul des économies prévues
+  const totalPlannedSavings = actions
+    .filter(a => ['proposed', 'in_progress', 'completed'].includes(a.status))
+    .reduce((sum, a) => sum + (Number(a.annual_savings_tco2e) || 0), 0);
+
+  // 5. Générer la courbe de trajectoire pluriannuelle année par année
+  const trajectoryYears: any[] = [];
+  const startY = Math.min(baselineYear, new Date().getFullYear());
+  const endY = Math.max(targetYear, startY + 1);
+  const totalSpan = Math.max(1, targetYear - baselineYear);
+
+  for (let y = startY; y <= endY; y++) {
+    // Calcul cible linéaire
+    let targetAtYear = baselineEmissions;
+    if (y >= baselineYear) {
+      const progressFraction = Math.min(1, Math.max(0, (y - baselineYear) / totalSpan));
+      targetAtYear = baselineEmissions * (1 - (reductionPct / 100) * progressFraction);
+    }
+
+    // Cumul des actions effectives jusqu'à cette année
+    const cumulativeSavingsAtYear = actions
+      .filter(a => a.target_year <= y && ['proposed', 'in_progress', 'completed'].includes(a.status))
+      .reduce((sum, a) => sum + (Number(a.annual_savings_tco2e) || 0), 0);
+
+    const projectedAtYear = Math.max(0, baselineEmissions - cumulativeSavingsAtYear);
+
+    // Émissions réelles constatées si un exercice existe
+    const actualPeriod = periods.find(p => p.year === y);
+
+    trajectoryYears.push({
+      year: y,
+      target_tco2e: Number(targetAtYear.toFixed(2)),
+      projected_tco2e: Number(projectedAtYear.toFixed(2)),
+      cumulative_savings_tco2e: Number(cumulativeSavingsAtYear.toFixed(2)),
+      actual_tco2e: actualPeriod ? Number(actualPeriod.total_tco2e.toFixed(2)) : null
+    });
+  }
+
+  const coveragePct = targetReductionTco2e > 0
+    ? Number(((totalPlannedSavings / targetReductionTco2e) * 100).toFixed(1))
+    : 100;
+
+  const gapTco2e = Math.max(0, Number((targetReductionTco2e - totalPlannedSavings).toFixed(2)));
+
+  res.json({
+    baselineYear,
+    baselineEmissions: Number(baselineEmissions.toFixed(2)),
+    targetYear,
+    targetReductionPct: reductionPct,
+    targetEmissions: Number(targetEmissions.toFixed(2)),
+    targetReductionTco2e: Number(targetReductionTco2e.toFixed(2)),
+    totalPlannedSavings: Number(totalPlannedSavings.toFixed(2)),
+    coveragePct,
+    gapTco2e,
+    actionsCount: actions.length,
+    history: periods.map(p => ({
+      id: p.id,
+      name: p.name,
+      year: p.year,
+      status: p.status,
+      total_tco2e: Number(p.total_tco2e.toFixed(2)),
+      scope1: Number(p.scope1_tco2e.toFixed(2)),
+      scope2: Number(p.scope2_tco2e.toFixed(2)),
+      scope3: Number(p.scope3_tco2e.toFixed(2))
+    })),
+    trajectory: trajectoryYears,
+    actions
+  });
 });
 
 // -------------------------------------------------------------

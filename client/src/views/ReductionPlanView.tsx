@@ -13,7 +13,13 @@ import {
   Clock,
   Sparkles,
   Calculator,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Target,
+  ShieldCheck,
+  Layers,
+  Milestone,
+  AlertCircle
 } from 'lucide-react';
 import { ReductionAction } from '../types.js';
 import { api } from '../api.js';
@@ -25,6 +31,9 @@ interface ReductionPlanViewProps {
 export const ReductionPlanView: React.FC<ReductionPlanViewProps> = ({ orgId }) => {
   const [actions, setActions] = useState<ReductionAction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [trajectoryData, setTrajectoryData] = useState<any | null>(null);
+  const [targetYearFilter, setTargetYearFilter] = useState<number>(2030);
+  const [reductionPctTarget, setReductionPctTarget] = useState<number>(30);
 
   // Modal ajout action
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,21 +49,25 @@ export const ReductionPlanView: React.FC<ReductionPlanViewProps> = ({ orgId }) =
   const solarProductionKwh = simKwc * 1650; // Moyenne Maroc : 1 650 kWh/kWc/an
   const solarSavingsTco2e = (solarProductionKwh * 0.642602) / 1000.0; // Mix ONEE
 
-  const fetchActions = async () => {
+  const fetchActionsAndTrajectory = async () => {
     setLoading(true);
     try {
-      const data = await api.reduction.getActions();
-      setActions(data);
+      const [actionsData, trajData] = await Promise.all([
+        api.reduction.getActions(orgId),
+        api.reduction.getTrajectory(orgId, { targetYear: targetYearFilter, reductionPct: reductionPctTarget }).catch(() => null)
+      ]);
+      setActions(actionsData || []);
+      setTrajectoryData(trajData);
     } catch (e) {
-      console.error("Erreur actions:", e);
+      console.error("Erreur actions ou trajectoire:", e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchActions();
-  }, [orgId]);
+    fetchActionsAndTrajectory();
+  }, [orgId, targetYearFilter, reductionPctTarget]);
 
   const handleCreateAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,14 +81,33 @@ export const ReductionPlanView: React.FC<ReductionPlanViewProps> = ({ orgId }) =
         cost_mad: Number(costMad || 0),
         annual_savings_tco2e: Number(savingsTco2e || 0),
         target_year: targetYear
-      });
+      }, orgId);
       setShowAddModal(false);
       setTitle('');
       setCostMad('');
       setSavingsTco2e('');
-      fetchActions();
+      fetchActionsAndTrajectory();
     } catch (err: any) {
       alert("Erreur création action: " + err.message);
+    }
+  };
+
+  const handleUpdateStatus = async (actionId: string, newStatus: string) => {
+    try {
+      await api.reduction.updateAction(actionId, { status: newStatus }, orgId);
+      fetchActionsAndTrajectory();
+    } catch (err: any) {
+      alert("Erreur mise à jour statut: " + err.message);
+    }
+  };
+
+  const handleDeleteAction = async (actionId: string, actTitle: string) => {
+    if (!confirm(`Supprimer l'action « ${actTitle} » du plan de réduction ?`)) return;
+    try {
+      await api.reduction.deleteAction(actionId, orgId);
+      fetchActionsAndTrajectory();
+    } catch (err: any) {
+      alert("Erreur suppression: " + err.message);
     }
   };
 
@@ -120,6 +152,124 @@ export const ReductionPlanView: React.FC<ReductionPlanViewProps> = ({ orgId }) =
           </button>
         </div>
       </div>
+
+      {/* Trajectoire Pluriannuelle de Décarbonation (SBTi / CDN Maroc) */}
+      {trajectoryData && (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <Target className="w-5 h-5 text-emerald-700" />
+                <h3 className="font-bold text-slate-900 text-base">
+                  Trajectoire Pluriannuelle & Objectif {trajectoryData.targetYear}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                  Aligné CDN Maroc & SBTi 1.5°C (-{trajectoryData.targetReductionPct}%)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Année de référence (Baseline) : <strong>{trajectoryData.baselineYear}</strong> ({trajectoryData.baselineEmissions} tCO2e)
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 text-xs">
+              <label className="text-slate-600 font-semibold">Objectif d'abattement :</label>
+              <select
+                value={reductionPctTarget}
+                onChange={e => setReductionPctTarget(Number(e.target.value))}
+                className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-xs font-bold text-slate-800"
+              >
+                <option value="20">-20% (Scénario modéré)</option>
+                <option value="30">-30% (CDN Maroc 2030)</option>
+                <option value="42">-42% (SBTi Net-Zero 1.5°C)</option>
+                <option value="50">-50% (Accélération Européenne)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Jauge d'atteinte d'objectif */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-800">
+                Couverture de l'objectif par les actions engagées :
+              </span>
+              <span className="font-extrabold text-sm text-brand-900">
+                {trajectoryData.coveragePct}% {trajectoryData.coveragePct >= 100 ? '🎯 Objectif couvert !' : ''}
+              </span>
+            </div>
+
+            <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  trajectoryData.coveragePct >= 100
+                    ? 'bg-emerald-600'
+                    : trajectoryData.coveragePct >= 60
+                    ? 'bg-brand-700'
+                    : 'bg-amber-500'
+                }`}
+                style={{ width: `${Math.min(100, trajectoryData.coveragePct)}%` }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+              <div>
+                <span className="text-slate-400 block text-[11px]">Émissions Baseline ({trajectoryData.baselineYear})</span>
+                <span className="font-bold text-slate-900">{trajectoryData.baselineEmissions} tCO2e</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Cible en {trajectoryData.targetYear}</span>
+                <span className="font-bold text-emerald-700">{trajectoryData.targetEmissions} tCO2e</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Réductions Planifiées</span>
+                <span className="font-bold text-brand-900">-{trajectoryData.totalPlannedSavings} tCO2e/an</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Écart résiduel (Gap)</span>
+                <span className={`font-bold ${trajectoryData.gapTco2e > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {trajectoryData.gapTco2e > 0 ? `${trajectoryData.gapTco2e} tCO2e à trouver` : 'Objectif atteint'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tableau de Trajectoire Année par Année */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+              <thead className="bg-slate-100 text-slate-700 font-bold text-[11px]">
+                <tr>
+                  <th className="p-2.5">Année</th>
+                  <th className="p-2.5">Cible Linéaire</th>
+                  <th className="p-2.5">Projection Plan d'Actions</th>
+                  <th className="p-2.5">Économies Cumulées</th>
+                  <th className="p-2.5">Inventaire Réel</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {trajectoryData.trajectory.map((t: any) => (
+                  <tr key={t.year} className="hover:bg-slate-50 transition">
+                    <td className="p-2.5 font-bold text-slate-900 font-mono">{t.year}</td>
+                    <td className="p-2.5 text-slate-600 font-mono">{t.target_tco2e} tCO2e</td>
+                    <td className="p-2.5 font-bold font-mono text-brand-900">{t.projected_tco2e} tCO2e</td>
+                    <td className="p-2.5 text-emerald-700 font-mono font-semibold">
+                      {t.cumulative_savings_tco2e > 0 ? `-${t.cumulative_savings_tco2e} tCO2e/an` : '0 tCO2e'}
+                    </td>
+                    <td className="p-2.5">
+                      {t.actual_tco2e !== null ? (
+                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">
+                          {t.actual_tco2e} tCO2e
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-[10px]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Simulateur Décarbonation Solaire PV */}
       <div className="bg-gradient-to-r from-emerald-900 to-brand-950 text-white p-6 rounded-2xl shadow-lg space-y-4">
@@ -208,17 +358,34 @@ export const ReductionPlanView: React.FC<ReductionPlanViewProps> = ({ orgId }) =
                     </span>
                   </div>
 
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      act.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : act.status === 'in_progress'
-                        ? 'bg-brand-100 text-brand-800 animate-pulse'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {act.status === 'completed' ? 'Réalisée' : act.status === 'in_progress' ? 'En cours' : 'Proposée'}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={act.status}
+                      onChange={e => handleUpdateStatus(act.id, e.target.value)}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${
+                        act.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : act.status === 'in_progress'
+                          ? 'bg-brand-100 text-brand-800 border-brand-300'
+                          : act.status === 'cancelled'
+                          ? 'bg-slate-200 text-slate-500 border-slate-300 line-through'
+                          : 'bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      <option value="proposed">Proposée</option>
+                      <option value="in_progress">En cours</option>
+                      <option value="completed">Réalisée</option>
+                      <option value="cancelled">Annulée</option>
+                    </select>
+
+                    <button
+                      onClick={() => handleDeleteAction(act.id, act.title)}
+                      className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                      title="Supprimer cette action"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

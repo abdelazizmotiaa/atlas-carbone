@@ -50,9 +50,16 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
   // État Revue de Dossier
   const [reviews, setReviews] = useState<any[]>([]);
-  const [reviewState, setReviewState] = useState('ready_for_review');
+  const [currentStatus, setCurrentStatus] = useState<string>(data?.period?.status || 'draft');
+  const [reviewState, setReviewState] = useState('in_review');
   const [reviewComment, setReviewComment] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+
+  useEffect(() => {
+    if (data?.period?.status) {
+      setCurrentStatus(data.period.status);
+    }
+  }, [data?.period?.status]);
 
   const periodId = data?.period?.id;
 
@@ -385,10 +392,38 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <History className="w-4 h-4 text-brand-800" />
               <span>Contrôle Interne et Revue du Dossier</span>
             </h3>
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
-              Statut : {period.status}
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                currentStatus === 'closed'
+                  ? 'bg-slate-900 text-amber-300 border border-slate-700'
+                  : currentStatus === 'validated'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : currentStatus === 'corrections_requested'
+                  ? 'bg-red-100 text-red-800 border border-red-300'
+                  : currentStatus === 'in_review'
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : currentStatus === 'collection'
+                  ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                  : 'bg-slate-100 text-slate-700 border border-slate-300'
+              }`}>
+                Statut : {
+                  currentStatus === 'closed' ? '🔒 Clôturé & Figé (closed)' :
+                  currentStatus === 'validated' ? '✅ Validé par la direction' :
+                  currentStatus === 'corrections_requested' ? '⚠️ Corrections demandées' :
+                  currentStatus === 'in_review' ? '🔍 En cours d\'audit / revue' :
+                  currentStatus === 'collection' ? '📝 Collecte de données' :
+                  'Brouillon initial (draft)'
+                }
+              </span>
+            </div>
           </div>
+
+          {period.closed_at && (
+            <div className="p-3 bg-slate-900 text-amber-300 rounded-xl text-xs flex items-center justify-between border border-slate-800">
+              <span>🔒 <strong>Inventaire Clôturé :</strong> les données d'émissions et justificatifs sont figés et immuables conformément au GHG Protocol.</span>
+              <span className="text-[11px] text-slate-400">Date : {formatDate(period.closed_at, lang)}</span>
+            </div>
+          )}
 
           {/* Formulaire de mise à jour de statut */}
           <form onSubmit={handleAddReview} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 no-print">
@@ -398,23 +433,24 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 <select
                   value={reviewState}
                   onChange={(e) => setReviewState(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white outline-none"
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="draft">Brouillon en cours (draft)</option>
-                  <option value="to_complete">À compléter (données manquantes)</option>
-                  <option value="ready_for_review">Prêt pour revue interne</option>
-                  <option value="reviewed_internal">Revu en interne (validé)</option>
-                  <option value="locked">Verrouillé / Immuable</option>
+                  <option value="collection">Collecte de données en cours (collection)</option>
+                  <option value="in_review">Prêt pour revue / En cours d'audit (in_review)</option>
+                  <option value="corrections_requested">Corrections et justificatifs demandés (corrections_requested)</option>
+                  <option value="validated">Validé par la direction (validated)</option>
+                  <option value="closed">Clôturé & Figé (closed)</option>
                 </select>
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Observations / Commentaires de revue</label>
+                <label className="block font-bold text-slate-700 mb-1">Observations / Remarques d'audit</label>
                 <input
                   type="text"
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="ex: Vérification des factures ONEE terminée"
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg outline-none"
+                  placeholder="ex: Vérification des factures ONEE terminée, dossier conforme"
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             </div>
@@ -422,20 +458,25 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <button
                 type="submit"
                 disabled={savingReview}
-                className="px-4 py-1.5 bg-brand-800 hover:bg-brand-900 disabled:bg-slate-300 text-white font-bold text-xs rounded-lg transition"
+                className="px-4 py-2 bg-brand-800 hover:bg-brand-900 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl transition flex items-center space-x-1.5"
               >
-                {savingReview ? 'Enregistrement...' : 'Enregistrer la revue'}
+                <History className="w-4 h-4" />
+                <span>{savingReview ? 'Enregistrement...' : 'Enregistrer la décision de revue'}</span>
               </button>
             </div>
           </form>
 
           {/* Journal des revues */}
           {reviews.length > 0 && (
-            <div className="space-y-1.5 text-xs text-slate-600">
+            <div className="space-y-2 text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-200">
+              <span className="font-bold text-slate-800 text-[11px] block">Historique des revues et changements de statut :</span>
               {reviews.map((r, i) => (
-                <div key={i} className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span><strong>{r.reviewer_name}</strong> a passé l'inventaire à <em>« {r.status} »</em></span>
-                  <span className="text-slate-400">{formatDate(r.created_at, lang)}</span>
+                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 border-b border-slate-100 last:border-0 gap-1">
+                  <div>
+                    <span><strong>{r.reviewer_name}</strong> a passé l'inventaire à <em>« {r.status} »</em></span>
+                    {r.comment && <p className="text-slate-500 text-[11px] italic mt-0.5">« {r.comment} »</p>}
+                  </div>
+                  <span className="text-slate-400 text-[11px] shrink-0">{formatDate(r.created_at, lang)}</span>
                 </div>
               ))}
             </div>

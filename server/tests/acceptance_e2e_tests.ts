@@ -94,7 +94,7 @@ function logTest(num: number, name: string, passed: boolean, details: string, er
 
 async function runAcceptanceTests() {
   console.log('\n================================================================');
-  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (21 TESTS)');
+  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (24 TESTS)');
   console.log('================================================================\n');
 
   let guestSessionId = '';
@@ -768,6 +768,227 @@ async function runAcceptanceTests() {
     }
   } catch (err: any) {
     logTest(21, 'Générateur Excel .xlsx', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 22: Multi-Sites Usines CRUD & Confinement Géographique RBAC (site_manager)
+  // ============================================================================
+  try {
+    // 1. Création d'un nouveau site par l'administrateur
+    const createSiteRes = await request('/api/organizations/org-agro-atlas/sites', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        name: 'Plateforme Logistique Berrechid',
+        city: 'Berrechid',
+        address: 'Zone Industrielle Berrechid Lot 45',
+        manager_user_id: 'usr-admin-agro'
+      }
+    });
+
+    const newSiteId = createSiteRes.data?.id;
+    const isCreated = createSiteRes.status === 201 && newSiteId;
+
+    // 2. Mise à jour du site
+    const updateSiteRes = await request(`/api/organizations/org-agro-atlas/sites/${newSiteId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        name: 'Plateforme Logistique & Froid Berrechid',
+        city: 'Berrechid'
+      }
+    });
+    const isUpdated = updateSiteRes.status === 200 && updateSiteRes.data?.name === 'Plateforme Logistique & Froid Berrechid';
+
+    // 3. Confinement du rôle site_manager (Omar Kabbaj - Agadir)
+    const loginSiteMgr = await request('/api/auth/login', {
+      method: 'POST',
+      body: { email: 'site.agadir@agro-atlas.ma', password: 'SiteAgadir2026!' }
+    });
+    const siteMgrToken = loginSiteMgr.data?.token;
+
+    // Le site_manager ne doit voir que son propre site
+    const listSitesMgrRes = await request('/api/organizations/org-agro-atlas/sites', {
+      headers: { Authorization: `Bearer ${siteMgrToken}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+    const siteMgrSites = listSitesMgrRes.data || [];
+    const isConfinedToAgadir = listSitesMgrRes.status === 200 &&
+      siteMgrSites.length === 1 &&
+      siteMgrSites[0].id === 'site-agadir-cond';
+
+    // Le site_manager tente de saisir une activité sur Casablanca (hors de son périmètre) -> HTTP 403 attendu
+    const unauthActRes = await request('/api/organizations/org-agro-atlas/activities', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${siteMgrToken}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        site_id: 'site-casa-siege',
+        category: 'combustion_fixe',
+        label: 'Fioul lourd chaudière Casa (Tentative non autorisée)',
+        quantity: 1000,
+        unit: 'litre',
+        factor_id: 'FE-MA-0029'
+      }
+    });
+    const isBlocked = unauthActRes.status === 403;
+
+    // Le site_manager saisit sur son propre site assigné (Agadir) -> HTTP 201 attendu
+    const authActRes = await request('/api/organizations/org-agro-atlas/activities', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${siteMgrToken}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        site_id: 'site-agadir-cond',
+        category: 'combustion_mobile',
+        label: 'Carburant diesel chariots élévateurs Agadir',
+        quantity: 500,
+        unit: 'litre',
+        factor_id: 'FE-MA-0029'
+      }
+    });
+    const isAllowedOnAssignedSite = authActRes.status === 201;
+
+    // 4. Protection contre la suppression d'un site avec des activités
+    const deleteBlockedRes = await request('/api/organizations/org-agro-atlas/sites/site-agadir-cond', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+    const isDeleteProtected = deleteBlockedRes.status === 400;
+
+    // 5. Suppression autorisée du site vide nouvellement créé
+    const deleteOkRes = await request(`/api/organizations/org-agro-atlas/sites/${newSiteId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+    const isDeleted = deleteOkRes.status === 200;
+
+    if (isCreated && isUpdated && isConfinedToAgadir && isBlocked && isAllowedOnAssignedSite && isDeleteProtected && isDeleted) {
+      logTest(22, 'Multi-Sites Usines CRUD & Confinement Géographique RBAC (site_manager)', true,
+        `Site créé, modifié, supprimé avec sécurité d'intégrité. Confinement géographique de Omar Kabbaj (Agadir) et neutralisation des saisies transverses validés (HTTP 403).`);
+    } else {
+      logTest(22, 'Multi-Sites Usines CRUD & Confinement RBAC', false,
+        `created=${isCreated}, updated=${isUpdated}, confined=${isConfinedToAgadir}, blocked=${isBlocked}, allowed=${isAllowedOnAssignedSite}, deleteProtected=${isDeleteProtected}, deleted=${isDeleted}`);
+    }
+  } catch (err: any) {
+    logTest(22, 'Multi-Sites Usines CRUD & Confinement RBAC', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 23: Workflow Complet de Revue Interne & Validation d'Exercice (Audit Trail)
+  // ============================================================================
+  try {
+    // 1. Passage de per-agro-2026 à 'in_review'
+    const step1Res = await request('/api/organizations/org-agro-atlas/periods/per-agro-2026/status', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: { status: 'in_review', comment: 'Dossier transmis au comité RSE pour audit interne' }
+    });
+    const isStep1 = step1Res.status === 200 && step1Res.data?.period?.status === 'in_review';
+
+    // 2. Passage à 'corrections_requested'
+    const step2Res = await request('/api/organizations/org-agro-atlas/periods/per-agro-2026/status', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: { status: 'corrections_requested', comment: 'Facture ONEE du mois de décembre manquante sur le site Casa' }
+    });
+    const isStep2 = step2Res.status === 200 && step2Res.data?.period?.status === 'corrections_requested';
+
+    // 3. Validation formelle par la direction
+    const step3Res = await request('/api/organizations/org-agro-atlas/periods/per-agro-2026/status', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: { status: 'validated', comment: 'Justificatif reçu et dossier formellement approuvé' }
+    });
+    const isStep3 = step3Res.status === 200 && step3Res.data?.period?.status === 'validated';
+
+    // 4. Consultation de l'historique complet d'audit
+    const reviewsRes = await request('/api/organizations/org-agro-atlas/periods/per-agro-2026/reviews', {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+    const reviewsList = reviewsRes.data || [];
+    const hasAuditTrail = reviewsRes.status === 200 &&
+      reviewsList.length >= 3 &&
+      reviewsList.some((r: any) => r.status === 'in_review') &&
+      reviewsList.some((r: any) => r.status === 'corrections_requested') &&
+      reviewsList.some((r: any) => r.status === 'validated');
+
+    if (isStep1 && isStep2 && isStep3 && hasAuditTrail) {
+      logTest(23, 'Workflow Complet de Revue Interne & Validation d’Exercice (Audit Trail)', true,
+        `Cycle de vie (in_review -> corrections_requested -> validated) opéré avec journalisation inaltérable des réviseurs et observations d'audit.`);
+    } else {
+      logTest(23, 'Workflow de Revue Interne', false,
+        `step1=${isStep1}, step2=${isStep2}, step3=${isStep3}, auditCount=${reviewsList?.length}`);
+    }
+  } catch (err: any) {
+    logTest(23, 'Workflow de Revue Interne', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 24: Trajectoire Pluriannuelle de Décarbonation (SBTi / CDN Maroc 2030) & Actions
+  // ============================================================================
+  try {
+    // 1. Consultation de la trajectoire modélisée
+    const trajRes = await request('/api/organizations/org-agro-atlas/trajectory?targetYear=2030&reductionPct=30', {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+
+    const trajData = trajRes.data;
+    const isTrajectoryValid = trajRes.status === 200 &&
+      trajData.baselineYear === 2025 &&
+      trajData.baselineEmissions > 700 &&
+      trajData.targetYear === 2030 &&
+      trajData.targetReductionPct === 30 &&
+      trajData.targetEmissions < trajData.baselineEmissions &&
+      trajData.totalPlannedSavings > 0 &&
+      trajData.coveragePct > 0 &&
+      Array.isArray(trajData.trajectory) &&
+      trajData.trajectory.length >= 6;
+
+    // 2. Création d'une nouvelle action de réduction
+    const createActionRes = await request('/api/reduction/actions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        title: 'Optimisation tournées logistiques et flotte hybride',
+        category: 'Logistique & Fret',
+        responsible: 'Salma Berrada',
+        cost_mad: 180000,
+        annual_savings_tco2e: 45.0,
+        target_year: 2028
+      }
+    });
+    const newActionId = createActionRes.data?.id;
+    const isActionCreated = createActionRes.status === 201 && newActionId;
+
+    // 3. Mise à jour de l'action (passage à in_progress)
+    const updateActionRes = await request(`/api/reduction/actions/${newActionId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        status: 'in_progress',
+        annual_savings_tco2e: 52.5
+      }
+    });
+    const isActionUpdated = updateActionRes.status === 200 &&
+      updateActionRes.data?.status === 'in_progress' &&
+      updateActionRes.data?.annual_savings_tco2e === 52.5;
+
+    // 4. Suppression de l'action
+    const deleteActionRes = await request(`/api/reduction/actions/${newActionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+    const isActionDeleted = deleteActionRes.status === 200;
+
+    if (isTrajectoryValid && isActionCreated && isActionUpdated && isActionDeleted) {
+      logTest(24, 'Trajectoire Pluriannuelle de Décarbonation (SBTi / CDN Maroc 2030) & Actions', true,
+        `Trajectoire 2025-2030 calculée avec baseline ${trajData.baselineEmissions} tCO2e, cible ${trajData.targetEmissions} tCO2e, couverture ${trajData.coveragePct}%, et cycle complet d'actions validé.`);
+    } else {
+      logTest(24, 'Trajectoire Pluriannuelle', false,
+        `trajValid=${isTrajectoryValid}, actCreated=${isActionCreated}, actUpdated=${isActionUpdated}, actDeleted=${isActionDeleted}`);
+    }
+  } catch (err: any) {
+    logTest(24, 'Trajectoire Pluriannuelle', false, err.message);
   }
 
   // ============================================================================

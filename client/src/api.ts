@@ -93,7 +93,9 @@ export const api = {
       request<{ success: boolean; onboarding_step: number; onboarding_completed: boolean }>(`/organizations/${orgId}/onboarding`, {
         method: 'POST',
         body: JSON.stringify(data)
-      })
+      }),
+    getMembers: (orgId: string) =>
+      request<any[]>(`/organizations/${orgId}/members`)
   },
   periods: {
     list: (orgId: string) => request<any[]>(`/organizations/${orgId}/periods`),
@@ -123,6 +125,11 @@ export const api = {
       request<any>(`/organizations/${orgId}/periods/${periodId}/reviews`, {
         method: 'POST',
         body: JSON.stringify(data)
+      }),
+    updateStatus: (orgId: string, periodId: string, data: { status: string; comment?: string }) =>
+      request<any>(`/organizations/${orgId}/periods/${periodId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
       })
   },
   sites: {
@@ -131,6 +138,15 @@ export const api = {
       request<any>(`/organizations/${orgId}/sites`, {
         method: 'POST',
         body: JSON.stringify(data)
+      }),
+    update: (orgId: string, siteId: string, data: any) =>
+      request<any>(`/organizations/${orgId}/sites/${siteId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+    delete: (orgId: string, siteId: string) =>
+      request<any>(`/organizations/${orgId}/sites/${siteId}`, {
+        method: 'DELETE'
       })
   },
   activities: {
@@ -260,12 +276,45 @@ export const api = {
     getDossiers: () => request<any[]>('/cbam/dossiers')
   },
   reduction: {
-    getActions: () => request<any[]>('/reduction/actions'),
-    createAction: (data: any) =>
-      request<any>('/reduction/actions', {
+    getActions: (orgId?: string) => request<any[]>(orgId ? `/organizations/${orgId}/reduction-actions` : '/reduction/actions'),
+    createAction: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/reduction-actions` : '/reduction/actions', {
         method: 'POST',
         body: JSON.stringify(data)
-      })
+      }),
+    updateAction: (actionId: string, data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/reduction-actions/${actionId}` : `/reduction/actions/${actionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+    deleteAction: (actionId: string, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/reduction-actions/${actionId}` : `/reduction/actions/${actionId}`, {
+        method: 'DELETE'
+      }),
+    getTrajectory: (orgId: string, params?: { targetYear?: number; reductionPct?: number; baselineYear?: number }) => {
+      const q = new URLSearchParams(params as any).toString();
+      return request<{
+        baselineYear: number;
+        baselineEmissions: number;
+        targetYear: number;
+        targetReductionPct: number;
+        targetEmissions: number;
+        targetReductionTco2e: number;
+        totalPlannedSavings: number;
+        coveragePct: number;
+        gapTco2e: number;
+        actionsCount: number;
+        history: any[];
+        trajectory: Array<{
+          year: number;
+          target_tco2e: number;
+          projected_tco2e: number;
+          cumulative_savings_tco2e: number;
+          actual_tco2e: number | null;
+        }>;
+        actions: any[];
+      }>(`/organizations/${orgId}/trajectory${q ? `?${q}` : ''}`);
+    }
   },
   commercial: {
     getQuotes: () => request<any[]>('/commercial/quotes'),
