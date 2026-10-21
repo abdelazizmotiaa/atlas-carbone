@@ -1,7 +1,7 @@
 /**
  * Atlas Carbone — Plateforme de Bilan Carbone & Accompagnement Commercial B2B
- * Consultation gratuite de 30 minutes • Bilan carbone initial accompagné à partir de 10 000 MAD
- * Responsable & Consultant : Abdelaziz Motiaa (Doctorant UM6P, spécialisé en quantification GES)
+ * Consultation découverte de 30 minutes offerte • Prestations d'ingénierie et d'accompagnement sur-mesure
+ * Responsable & Consultant : Abdelaziz Motiaa (Ingénieur Environnement & Doctorant UM6P, spécialisé en quantification GES)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -171,7 +171,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: "Combien coûte la prestation ?",
-      a: "Notre accompagnement débute à partir de 10 000 MAD. Le tarif définitif est fixé dans un devis personnalisé avant tout démarrage. Il dépend de la taille de votre structure, du nombre de sites d'exploitation, de votre secteur d'activité, de la disponibilité de vos données et du périmètre d'émissions convenu (Scope 1 direct, Scope 2 énergie, et catégories pertinentes du Scope 3). La consultation découverte initiale de 30 minutes est quant à elle 100% gratuite."
+      a: "Nos prestations d’accompagnement font l’objet d’un devis personnalisé et transparent établi avant tout démarrage. Le coût est dimensionné selon la taille de votre structure, le nombre de sites d'exploitation, la complexité de vos flux énergétiques et le périmètre d’émissions convenu (Scope 1 direct, Scope 2 énergie, et catégories prioritaires du Scope 3). La consultation découverte initiale de 30 minutes est quant à elle 100% offerte et sans engagement."
     },
     {
       q: "Combien de temps dure l'accompagnement ?",
@@ -179,7 +179,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: "Faut-il disposer d'un responsable environnement en interne ?",
-      a: "Non, absolument pas. La grande majorité des PME marocaines ne dispose pas de spécialiste climat en interne. Notre accompagnement est conçu pour être accessible aux dirigeants, directeurs administratifs et financiers (DAF), directeurs industriels ou responsables des opérations. Les questions sont formulées en langage courant et contextualisées avec vos factures de terrain."
+      a: "Non, absolument pas. La grande majorité des PME marocaines ne dispose pas de spécialiste climat en interne. Notre accompagnement est conçu par un ingénieur en environnement pour être accessible aux dirigeants, directeurs administratifs et financiers (DAF), directeurs industriels ou responsables des opérations. Les questions sont formulées en langage courant et contextualisées avec vos factures de terrain."
     },
     {
       q: "La consultation initiale est-elle gratuite ?",
@@ -206,7 +206,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: "How much does the consulting service cost?",
-      a: "Our supported carbon assessment starts from 10,000 MAD. The final price is stated in a formal quote prior to mission kickoff, depending on your company size, number of sites, sector, data readiness and agreed scopes. The initial 30-minute discovery consultation is 100% free of charge."
+      a: "Our consulting engagements are based on a transparent, custom quote established prior to kickoff. Pricing is tailored to your company size, number of operating sites, energy complexity and agreed scopes (Scope 1 direct, Scope 2 energy, and priority Scope 3 categories). The initial 30-minute discovery consultation is 100% free of charge and non-binding."
     },
     {
       q: "How long does the engagement take?",
@@ -214,7 +214,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: "Do we need an internal sustainability manager?",
-      a: "No. Most Moroccan SMEs do not have a full-time climate officer. Our methodology is tailored for Managing Directors, CFOs, plant managers and operations leads, translating complex standards into everyday operational data."
+      a: "No. Most Moroccan SMEs do not have a full-time climate officer. Our methodology is designed by an environmental engineer for Managing Directors, CFOs, plant managers and operations leads, translating complex standards into everyday operational data."
     },
     {
       q: "Is the initial 30-minute consultation free?",
@@ -253,7 +253,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </span>
               </div>
               <span className="block text-[10px] text-slate-500 font-medium">
-                {lang === 'en' ? 'Corporate Carbon Footprint & Consulting' : 'Comptabilité Carbone & Accompagnement Entreprises'}
+                {lang === 'en' ? 'Environmental Engineering & Carbon Accounting' : 'Ingénierie & Accompagnement Bilan Carbone'}
               </span>
             </div>
           </div>
@@ -266,14 +266,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <a href="#deroulement" className="hover:text-emerald-800 transition">
               {lang === 'en' ? '5 Steps' : 'Déroulement'}
             </a>
-            <a href="#offre" className="hover:text-emerald-800 transition text-emerald-900 font-black flex items-center space-x-1">
-              <span>{lang === 'en' ? 'Offer (10,000 MAD)' : 'Notre Offre (10 000 MAD)'}</span>
+            <a href="#prestations" className="hover:text-emerald-800 transition text-emerald-900 font-black flex items-center space-x-1">
+              <span>{lang === 'en' ? 'Our Services' : 'Nos Prestations'}</span>
             </a>
             <a href="#pourquoi-nous" className="hover:text-emerald-800 transition">
               {lang === 'en' ? 'Why Us' : 'Pourquoi nous'}
             </a>
             <a href="#consultant" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? 'The Consultant' : 'Le Consultant'}
+              {lang === 'en' ? 'The Consultant' : 'L’Expert'}
             </a>
             <a href="#faq" className="hover:text-emerald-800 transition">
               FAQ
@@ -329,20 +329,20 @@ export const LandingView: React.FC<LandingViewProps> = ({
             {/* Colonne Gauche : Proposition de Valeur */}
             <div className="lg:col-span-7 space-y-6 text-left">
               
-              {/* Badge d'Accroche Tarifaire & Cadrage */}
+              {/* Badge d'Accroche Expert & Cadrage */}
               <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-300 shadow-sm text-emerald-950 text-xs font-bold">
                 <Sparkles className="w-4 h-4 text-amber-600" />
                 <span>
                   {lang === 'en'
-                    ? 'Supported initial assessment from 10,000 MAD • Free 30-min call'
-                    : 'Accompagnement à partir de 10 000 MAD • Consultation découverte de 30 min offerte'}
+                    ? 'Expert environmental support • Free 30-min discovery call'
+                    : 'Ingénierie & accompagnement sur-mesure • Consultation découverte de 30 min offerte'}
                 </span>
               </div>
 
               {/* Titre Principal */}
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.18]">
                 {lang === 'en' ? (
-                  <>Your first corporate carbon assessment, <span className="text-emerald-800">simply and with expert support</span>.</>
+                  <>Your corporate carbon footprint, <span className="text-emerald-800">simply and with expert engineering support</span>.</>
                 ) : (
                   <>Votre premier bilan carbone, <span className="text-emerald-800">simplement et avec un accompagnement expert</span>.</>
                 )}
@@ -355,24 +355,26 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   : 'Atlas Carbone accompagne les entreprises marocaines dans l’estimation et la quantification de leurs émissions de gaz à effet de serre, grâce à une approche structurée et adaptée à leurs activités.'}
               </p>
 
-              {/* Prix et gratuité clairement affichés */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    {lang === 'en' ? 'Starting Price' : 'Tarif de départ prestation'}
+              {/* Bloc Prestations sur-mesure & Gratuité cadrage */}
+              <div className="p-4.5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="inline-block px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                    {lang === 'en' ? 'Custom Consulting & Engineering' : 'Expertise & Ingénierie Carbone'}
                   </span>
-                  <div className="flex items-baseline space-x-2">
-                    <span className="text-2xl sm:text-3xl font-black text-emerald-900">10 000 MAD</span>
-                    <span className="text-xs text-slate-500 font-medium">HT (sur devis personnalisé)</span>
+                  <div className="text-base sm:text-lg font-black text-slate-900">
+                    {lang === 'en' ? 'Prestations on custom tailored quote' : 'Prestations sur devis personnalisé'}
                   </div>
+                  <p className="text-xs text-slate-500">
+                    {lang === 'en' ? 'Priced according to your sites, bills and specific scopes' : 'Dimensionné selon vos sites, factures ONEE et priorités opérationnelles'}
+                  </p>
                 </div>
-                <div className="sm:border-l sm:border-slate-200 sm:pl-4 text-xs text-slate-600">
+                <div className="sm:border-l sm:border-slate-200 sm:pl-4 text-xs text-slate-600 shrink-0 space-y-1">
                   <div className="flex items-center space-x-1.5 text-emerald-800 font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{lang === 'en' ? 'Initial 30-min call: 100% Free' : 'Échange initial 30 min : 100% Gratuit'}</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>{lang === 'en' ? 'Discovery call (30 min): 100% Free' : 'Échange découverte 30 min : 100% Gratuit'}</span>
                   </div>
-                  <span className="text-[11px] text-slate-500">
-                    {lang === 'en' ? 'No advance payment required' : 'Aucun paiement avant validation du devis'}
+                  <span className="text-[11px] text-slate-500 block">
+                    {lang === 'en' ? 'No advance payment required' : 'Cadrage sans engagement avant tout devis'}
                   </span>
                 </div>
               </div>
@@ -397,10 +399,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </a>
 
                 <a
-                  href="#deroulement"
+                  href="#prestations"
                   className="inline-flex items-center space-x-1.5 px-4 py-3.5 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
                 >
-                  <span>{lang === 'en' ? 'Discover our process' : 'Découvrir notre accompagnement'}</span>
+                  <span>{lang === 'en' ? 'Discover our services' : 'Découvrir nos prestations'}</span>
                   <span>↓</span>
                 </a>
               </div>
@@ -417,7 +419,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
                 <div className="flex items-center space-x-2">
                   <User className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>Contact direct avec le consultant</span>
+                  <span>Ingénieur Environnement dédié</span>
                 </div>
               </div>
 
@@ -431,14 +433,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Exemple de synthèse
+                      Accompagnement d'Expertise
                     </span>
                     <h3 className="font-extrabold text-slate-900 text-base">
-                      Bilan Carbone Initial Accompagné
+                      Prestations & Ingénierie Carbone
                     </h3>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
-                    Périmètre Cadré
+                    Sur Devis
                   </span>
                 </div>
 
@@ -533,7 +535,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
             {lang === 'en'
               ? 'Our support is tailored to Moroccan businesses seeking clarity, pragmatism and scientific rigor without unnecessary complexity.'
-              : 'Notre offre s’adresse aux entreprises marocaines qui recherchent de la clarté, du pragmatisme et de la rigueur scientifique, sans jargon superflu.'}
+              : 'Notre offre s’adresse aux entreprises marocaines qui recherchent de la clarté, du pragmatisme et de la rigueur d’ingénierie, sans jargon superflu.'}
           </p>
 
           <div className="pt-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 text-left">
@@ -605,7 +607,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </p>
               </div>
               <span className="text-[11px] font-bold text-emerald-800">
-                Guidage sans jargon →
+                Guidage pas à pas →
               </span>
             </div>
 
@@ -677,7 +679,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <h3 className="font-extrabold text-slate-900 text-sm">Définition du périmètre & devis</h3>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Définition formelle des scopes retenus, des livrables attendus et envoi d’un devis transparent (à partir de 10 000 MAD).
+                Définition formelle des scopes retenus, des livrables attendus et envoi d’un devis sur-mesure clair et transparent.
               </p>
             </div>
 
@@ -737,92 +739,208 @@ export const LandingView: React.FC<LandingViewProps> = ({
       </section>
 
       {/* ------------------------------------------------------------- */}
-      {/* SECTION 4 — NOTRE OFFRE COMMERCIALE */}
+      {/* SECTION 4 — NOS PRESTATIONS D'ACCOMPAGNEMENT */}
       {/* ------------------------------------------------------------- */}
-      <section id="offre" className="py-20 border-b border-slate-200 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <div className="text-center space-y-3">
-            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider inline-block">
-              {lang === 'en' ? 'Transparent Pricing' : 'Tarif & Prestation'}
+      <section id="prestations" className="py-20 border-b border-slate-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold uppercase tracking-wider inline-block">
+              {lang === 'en' ? 'Tailored Services' : 'Expertise & Ingénierie Carbone'}
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
-              {lang === 'en' ? 'Our Consulting Engagement' : 'Notre offre d’accompagnement'}
+              {lang === 'en' ? 'Our Consulting Engagements' : 'Nos Prestations d’Accompagnement Bilan Carbone'}
             </h2>
-            <p className="text-slate-600 text-sm max-w-xl mx-auto">
-              Une formule claire et adaptée aux entreprises souhaitant réaliser une première évaluation structurée de leurs émissions GES.
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+              Une démarche complète d’ingénierie environnementale, de la collecte des factures ONEE jusqu’au rapport d’audit et aux recommandations de décarbonation. Nos prestations sont adaptées à la taille et aux enjeux de chaque entreprise.
             </p>
           </div>
 
-          {/* Carte Commerciale Premium */}
-          <div className="bg-gradient-to-b from-white to-slate-50 rounded-3xl border-2 border-emerald-800/30 shadow-2xl p-8 sm:p-10 space-y-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 px-4 py-1.5 bg-emerald-800 text-white text-[11px] font-black uppercase tracking-wider rounded-bl-2xl">
-              Offre Recommandée
-            </div>
+          {/* Grille des 3 Prestations Clés */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            
+            {/* Prestation 1 : Bilan Initial & Énergie */}
+            <div className="bg-slate-50 rounded-3xl border border-slate-200 p-7 sm:p-8 flex flex-col justify-between space-y-6 hover:shadow-lg transition">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                  ⚡
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                    Formule PME & Démarrage
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-1">
+                    Bilan Carbone Initial & Énergie
+                  </h3>
+                  <span className="text-xs text-slate-500 font-semibold">Scopes 1 & 2 (Direct & Électricité)</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Idéal pour réaliser votre première comptabilité carbone structurée et valoriser vos données énergétiques opérationnelles.
+                </p>
 
-            <div className="space-y-4">
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
-                Bilan carbone initial accompagné
-              </h3>
-              <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-                Une première évaluation structurée des émissions de gaz à effet de serre de votre entreprise, réalisée avec un accompagnement méthodologique et adaptée à votre activité.
-              </p>
-
-              <div className="pt-2 flex flex-col sm:flex-row sm:items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black text-emerald-900">À partir de 10 000 MAD</span>
-                <span className="text-xs text-slate-500 font-medium">HT • Fixé sur devis personnalisé</span>
-              </div>
-            </div>
-
-            {/* Prestations Incluses sous réserve du périmètre convenu */}
-            <div className="pt-4 border-t border-slate-200 space-y-4">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Prestations possibles (sous réserve du périmètre convenu dans le devis) :
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-slate-700">
-                {[
-                  'Réunion de cadrage initiale',
-                  'Identification des sources d’émissions pertinentes',
-                  'Accompagnement à la collecte des données d’activité',
-                  'Sélection documentée des facteurs d’émission',
-                  'Calcul des émissions sur le périmètre défini',
-                  'Analyse des principaux postes d’émissions',
-                  'Rapport de synthèse clair et professionnel',
-                  'Réunion de restitution et d’échange avec le consultant'
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-start space-x-2.5">
+                <div className="pt-2 border-t border-slate-200 space-y-2 text-xs text-slate-700">
+                  <span className="font-bold text-slate-900 block text-[11px] uppercase tracking-wide">
+                    Prestations & livrables inclus :
+                  </span>
+                  <div className="flex items-start space-x-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span className="font-medium text-slate-800">{item}</span>
+                    <span>Factures d'électricité réseau ONEE (mix moyen documenté)</span>
                   </div>
-                ))}
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Carburants flotte (gasoil, essence) & combustibles sur site</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Calcul déterministe avec incertitudes méthodologiques</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Rapport officiel de synthèse & réunion de restitution</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <div className="p-3 rounded-xl bg-white border border-slate-200 text-center">
+                  <span className="block text-xs font-black text-slate-900">Sur Devis Personnalisé</span>
+                  <span className="block text-[10px] text-slate-500">Cadrage gratuit de 30 minutes</span>
+                </div>
+                <button
+                  onClick={() => openCalendlyWithPrefill()}
+                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Demander un cadrage gratuit</span>
+                </button>
               </div>
             </div>
 
-            {/* Mention Obligatoire de Transparence */}
-            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
-              <span className="font-bold block">Notice méthodologique importante :</span>
-              <p className="leading-relaxed">
-                Le périmètre, les livrables, le délai et le tarif définitif sont précisés dans un devis personnalisé. Le tarif de 10 000 MAD constitue le tarif de départ pour un périmètre initial convenu et ne comprend pas automatiquement l’ensemble exhaustif des Scopes 1, 2 et 3 ni une certification tierce partie indépendante.
-              </p>
+            {/* Prestation 2 : Bilan Complet & Chaîne de Valeur (Card mise en avant) */}
+            <div className="bg-gradient-to-b from-white to-emerald-50/50 rounded-3xl border-2 border-emerald-800 shadow-xl p-7 sm:p-8 flex flex-col justify-between space-y-6 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-800 text-white text-[10px] font-black uppercase tracking-wider rounded-full shadow">
+                Recommandé pour PME & Industrie
+              </div>
+
+              <div className="space-y-4 pt-1">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-bold text-lg shadow-md">
+                  📊
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                    Conformité Donneurs d'Ordre
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-1">
+                    Bilan Carbone Complet & Chaîne de Valeur
+                  </h3>
+                  <span className="text-xs text-slate-500 font-semibold">Scopes 1, 2 & Scope 3 Prioritaire</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Conçu pour les sous-traitants, industriels et entreprises répondant aux exigences RSE de leurs clients et banques partenaires.
+                </p>
+
+                <div className="pt-2 border-t border-emerald-200/60 space-y-2 text-xs text-slate-700">
+                  <span className="font-bold text-slate-900 block text-[11px] uppercase tracking-wide">
+                    Prestations & livrables inclus :
+                  </span>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Intégralité des Scopes 1 & 2 (énergie, combustion, procédés)</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Scope 3 prioritaire : intrants clés, fret amont/aval, déchets</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Conformité ISO 14064-1:2018 et GHG Protocol</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Classeur d’audit exhaustif & plan d’actions de décarbonation</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-emerald-200/60 space-y-3">
+                <div className="p-3 rounded-xl bg-emerald-100/70 border border-emerald-300 text-center">
+                  <span className="block text-xs font-black text-emerald-950">Sur Devis Personnalisé</span>
+                  <span className="block text-[10px] text-emerald-800">Dimensionné selon le nombre de sites</span>
+                </div>
+                <button
+                  onClick={() => openCalendlyWithPrefill()}
+                  className="w-full py-3.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center space-x-2 transition shadow-md"
+                >
+                  <Calendar className="w-4 h-4 text-amber-300" />
+                  <span>Cadrer mon bilan avec l'ingénieur</span>
+                </button>
+              </div>
             </div>
 
-            {/* Boutons d'Action */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
-              <button
-                onClick={() => openCalendlyWithPrefill()}
-                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
-              >
-                <Calendar className="w-4 h-4 text-amber-300" />
-                <span>Discuter de mon bilan carbone (30 min offertes)</span>
-              </button>
+            {/* Prestation 3 : Spécifique Exportateurs & MACF / CBAM */}
+            <div className="bg-slate-50 rounded-3xl border border-slate-200 p-7 sm:p-8 flex flex-col justify-between space-y-6 hover:shadow-lg transition">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-lg">
+                  🚢
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">
+                    Export Union Européenne
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-1">
+                    Accompagnement Spécifique MACF / CBAM
+                  </h3>
+                  <span className="text-xs text-slate-500 font-semibold">Règlementation (UE) 2023/956</span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Dédié aux industriels exportant de l'acier, aluminium, ciment ou engrais vers le marché européen, nécessitant des calculs par tonne de produit.
+                </p>
 
-              <a
-                href="#qualification-form"
-                className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm text-center shadow-sm transition"
-              >
-                Demander un devis en décrivant mon entreprise
-              </a>
+                <div className="pt-2 border-t border-slate-200 space-y-2 text-xs text-slate-700">
+                  <span className="font-bold text-slate-900 block text-[11px] uppercase tracking-wide">
+                    Prestations & livrables inclus :
+                  </span>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Calcul des émissions intrinsèques directes & indirectes (SEE)</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Modélisation par ligne de production et code NC à 8 chiffres</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Prise en compte des précurseurs industriels</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Dossier technique prêt pour déclaration de vos acheteurs dans l'UE</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <div className="p-3 rounded-xl bg-white border border-slate-200 text-center">
+                  <span className="block text-xs font-black text-slate-900">Sur Devis Personnalisé</span>
+                  <span className="block text-[10px] text-slate-500">Étude de faisabilité offerte</span>
+                </div>
+                <button
+                  onClick={() => openCalendlyWithPrefill()}
+                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Échanger sur vos flux export</span>
+                </button>
+              </div>
             </div>
 
+          </div>
+
+          {/* Notice Méthodologique & Transparence */}
+          <div className="p-5 rounded-2xl bg-slate-100/80 border border-slate-200 text-xs text-slate-600 max-w-4xl mx-auto space-y-1.5 text-center">
+            <span className="font-bold text-slate-800 block">Principes d’engagement et de tarification transparente :</span>
+            <p className="leading-relaxed">
+              Chaque entreprise ayant des installations, des volumes de données et des périmètres opérationnels différents, le tarif exact et le calendrier sont déterminés sur-mesure dans un devis détaillé suite à votre consultation découverte gratuite de 30 minutes. Aucun paiement ni engagement n'est demandé en amont.
+            </p>
           </div>
         </div>
       </section>
@@ -845,16 +963,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* 1. Accompagnement scientifique */}
+            {/* 1. Ingénierie & Rigueur scientifique */}
             <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
                 🔬
               </div>
               <h3 className="font-extrabold text-slate-900 text-base">
-                Accompagnement scientifique
+                Ingénierie & Rigueur scientifique
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Une expertise directement issue de travaux de recherche doctorale appliquée à la mesure, la modélisation et la quantification rigoureuse des émissions de gaz à effet de serre.
+                Une expertise conjuguant les compétences techniques d'un ingénieur en environnement et les travaux de recherche doctorale appliquée à la modélisation et à la quantification des GES.
               </p>
             </div>
 
@@ -867,7 +985,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 Approche adaptée au Maroc
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Prise en compte fine du mix électrique national (factures ONEE), des carburants commercialisés au Maroc et des spécificités opérationnelles des PME du Royaume.
+                Prise en compte fine du mix électrique national (factures ONEE), des carburants commercialisés au Maroc et des réalités opérationnelles des PME du Royaume.
               </p>
             </div>
 
@@ -910,13 +1028,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </p>
             </div>
 
-            {/* 6. Contact direct avec le consultant */}
+            {/* 6. Contact direct avec l'ingénieur consultant */}
             <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold">
                 🤝
               </div>
               <h3 className="font-extrabold text-slate-900 text-base">
-                Contact direct avec le consultant
+                Contact direct avec l’expert
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Un interlocuteur unique et dédié (Abdelaziz Motiaa), disponible directement par téléphone, visioconférence et WhatsApp tout au long de la mission.
@@ -933,7 +1051,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-3">
             <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider inline-block">
-              {lang === 'en' ? 'Scientific Lead' : 'Le Consultant'}
+              {lang === 'en' ? 'Scientific & Technical Lead' : 'L’Expert & Consultant'}
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
               À propos d’Abdelaziz Motiaa
@@ -946,25 +1064,30 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-900 to-slate-900 text-amber-300 font-black text-2xl flex items-center justify-center shadow-lg border border-emerald-800 shrink-0">
                 AM
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900">
                   Abdelaziz Motiaa
                 </h3>
-                <p className="text-xs sm:text-sm font-bold text-emerald-800">
-                  Doctorant à l’Université Mohammed VI Polytechnique (UM6P)
-                </p>
-                <p className="text-xs text-slate-600 font-medium">
-                  Spécialisé dans la mesure et la quantification des émissions de gaz à effet de serre.
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 font-black text-xs">
+                    Ingénieur Environnement
+                  </span>
+                  <span className="px-3 py-0.5 rounded-full bg-slate-200 border border-slate-300 text-slate-800 font-extrabold text-xs">
+                    Doctorant-Chercheur (UM6P)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium pt-1">
+                  Ingénieur d’État en Environnement et Doctorant à l’Université Mohammed VI Polytechnique (UM6P), spécialisé dans la mesure, la modélisation et la quantification des émissions de gaz à effet de serre.
                 </p>
               </div>
             </div>
 
             <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed border-t border-slate-200 pt-5">
               <p>
-                Dans le cadre de ses travaux de recherche doctorale à l'UM6P et de ses missions d'accompagnement, Abdelaziz Motiaa met la rigueur scientifique au service de la transition environnementale des entreprises marocaines.
+                Alliant l’expertise technique et opérationnelle d’un <strong>ingénieur en environnement</strong> (bilans matières et flux énergétiques, installations industrielles, factures ONEE) à la rigueur méthodologique de ses <strong>travaux de recherche doctorale à l’UM6P</strong>, Abdelaziz Motiaa met la science de la quantification carbone au service des entreprises marocaines.
               </p>
               <p>
-                Son rôle consiste à démythifier la comptabilité carbone, à traduire les exigences des référentiels internationaux (ISO 14064-1, GHG Protocol, MACF/CBAM) en étapes opérationnelles concrètes, et à garantir à chaque dirigeant un bilan rigoureux, défendable et actionnable.
+                Son rôle consiste à démythifier la comptabilité carbone, à traduire les référentiels internationaux (ISO 14064-1, GHG Protocol, MACF/CBAM) en étapes opérationnelles concrètes adaptées aux contraintes de votre activité, et à vous fournir un bilan carbone rigoureux, défendable auprès de vos clients et banques partenaires.
               </p>
             </div>
 
@@ -1025,7 +1148,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               Questions Fréquentes
             </h2>
             <p className="text-slate-600 text-sm max-w-xl mx-auto">
-              Toutes les réponses à vos questions sur notre accompagnement, les tarifs, la durée et les données nécessaires.
+              Toutes les réponses à vos questions sur notre accompagnement, les modalités de devis, la durée et les données nécessaires.
             </p>
           </div>
 
@@ -1092,7 +1215,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-            Prêt à réaliser votre premier bilan carbone ?
+            Prêt à réaliser votre bilan carbone avec un ingénieur expert ?
           </h2>
 
           <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
@@ -1137,7 +1260,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <span className="text-[10px] text-emerald-400 font-mono">Maroc</span>
               </div>
               <p className="text-xs text-slate-500">
-                Accompagnement méthodologique et quantification des émissions de gaz à effet de serre.
+                Ingénierie environnementale, accompagnement méthodologique et quantification des émissions de gaz à effet de serre.
               </p>
             </div>
 
@@ -1165,7 +1288,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
             <p>
-              © {new Date().getFullYear()} Atlas Carbone. Responsable scientifique : Abdelaziz Motiaa (UM6P). Tous droits réservés.
+              © {new Date().getFullYear()} Atlas Carbone. Consultant : Abdelaziz Motiaa (Ingénieur Environnement & Doctorant UM6P). Tous droits réservés.
             </p>
             <p>
               Conforme aux exigences de protection des données (CNDP Loi 09-08). Données hébergées en environnement sécurisé.

@@ -1496,7 +1496,7 @@ async function runAcceptanceTests() {
       headers: { Authorization: `Bearer ${tenantTokenAgro}` },
       body: {
         status: 'Devis envoyé',
-        notes: 'Devis initial 10 000 MAD HT envoyé suite à échange Calendly de 30 min.'
+        notes: 'Devis sur-mesure envoyé suite à échange Calendly de 30 min.'
       }
     });
     const isStatusUpdated = updateRes.status === 200 && updateRes.data?.lead?.status === 'Devis envoyé';

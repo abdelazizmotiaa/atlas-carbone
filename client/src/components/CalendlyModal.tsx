@@ -90,7 +90,7 @@ export const CalendlyModal: React.FC<CalendlyModalProps> = ({
                 </span>
                 <span>•</span>
                 <span className="text-slate-300">
-                  {lang === 'en' ? 'With Abdelaziz Motiaa (UM6P)' : 'Avec Abdelaziz Motiaa (Doctorant UM6P)'}
+                  {lang === 'en' ? 'With Abdelaziz Motiaa (Environmental Engineer & PhD Researcher)' : 'Avec Abdelaziz Motiaa (Ingénieur Environnement & Doctorant UM6P)'}
                 </span>
               </div>
             </div>

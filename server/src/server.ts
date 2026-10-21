@@ -2244,7 +2244,7 @@ app.post('/api/leads', (req, res) => {
     'lead_prospect_confirmation',
     `<p>Bonjour ${full_name.trim()},</p>
      <p>Nous vous remercions pour l'intérêt porté à <strong>Atlas Carbone</strong> et à notre accompagnement pour la réalisation du bilan carbone de votre entreprise <strong>${company.trim()}</strong>.</p>
-     <p>Votre demande a bien été transmise à notre consultant, <strong>Abdelaziz Motiaa</strong> (Doctorant à l'UM6P spécialisé dans la mesure des émissions GES).</p>
+     <p>Votre demande a bien été transmise à notre consultant, <strong>Abdelaziz Motiaa</strong> (Ingénieur Environnement & Doctorant-Chercheur à l'UM6P, spécialisé dans la mesure et la quantification des émissions GES).</p>
      <div style="background:#f0fdf4;border:1px solid #86efac;padding:16px;border-radius:8px;margin:20px 0;">
        <h3 style="color:#166534;margin-top:0;">Étape suivante : Réserver votre consultation découverte gratuite (30 min)</h3>
        <p style="margin-bottom:12px;">Afin de cadrer précisément vos besoins, la consultation initiale de 30 minutes est offerte et sans engagement :</p>

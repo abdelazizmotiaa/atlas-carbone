@@ -142,8 +142,8 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
         </h3>
         <p className="text-slate-300 text-sm mt-2 max-w-2xl leading-relaxed">
           {lang === 'en'
-            ? 'Receive a clear initial assessment proposal tailored to your sector, starting from 10,000 MAD.'
-            : 'Recevez une proposition d’accompagnement initial adaptée à votre secteur, à partir de 10 000 MAD.'}
+            ? 'Receive a tailored consulting proposal adapted to your sector, installations and specific scopes.'
+            : 'Recevez une proposition d’accompagnement sur-mesure adaptée à votre secteur, vos installations et vos priorités.'}
         </p>
       </div>
 
@@ -413,7 +413,7 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
           {/* Bouton de Soumission */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
             <div className="text-xs text-slate-500">
-              <span className="font-bold text-slate-700">Prestation :</span> À partir de 10 000 MAD • Consultation 30 min gratuite
+              <span className="font-bold text-slate-700">{lang === 'en' ? 'Engagement :' : 'Prestations :'}</span> {lang === 'en' ? 'Tailored quote • Free 30-min discovery call' : 'Sur devis personnalisé • Consultation découverte 30 min offerte'}
             </div>
             <button
               type="submit"

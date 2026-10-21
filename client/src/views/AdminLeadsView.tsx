@@ -131,7 +131,7 @@ export const AdminLeadsView: React.FC = () => {
             Pipeline Commercial & Demandes de Bilan Carbone
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Suivi des entreprises qualifiées, rendez-vous Calendly et devis (Bilan initial à partir de 10 000 MAD)
+            Suivi des entreprises qualifiées, rendez-vous Calendly, cadrage des prestations et devis personnalisés
           </p>
         </div>
         <button
