@@ -50,6 +50,9 @@ export interface ActivityCalculationInput {
   activityUncertaintyPct?: number; // ex: 0.05
   allowProvisionalScope1?: boolean; // si vrai, autorise un facteur amont+combustion avec avertissement explicite
   customGwp?: number;
+  billAmountMad?: number;
+  billPresetId?: string;
+  unitPriceMad?: number;
 }
 
 export interface CalculationAuditTrace {
@@ -58,6 +61,7 @@ export interface CalculationAuditTrace {
   convertedQuantity: number;
   standardUnit: string;
   conversionExplanation: string;
+  isMonetaryEstimate?: boolean;
   factorId: string;
   factorName: string;
   factorValue: number;
@@ -108,8 +112,17 @@ export function calculateEmission(input: ActivityCalculationInput): CalculationR
     }
   }
 
-  // Conversion de l'unité d'activité vers l'unité du facteur
-  const conversion = convertQuantity(input.quantity, input.unit, input.factor.denominatorUnit);
+  // Conversion de l'unité d'activité vers l'unité du facteur (avec support factures MAD)
+  const conversion = convertQuantity(input.quantity, input.unit, input.factor.denominatorUnit, {
+    unitPriceMad: input.unitPriceMad,
+    billPresetId: input.billPresetId
+  });
+
+  if (conversion.isMonetaryEstimate) {
+    warnings.push(
+      "Donnée d'activité dérivée d'une facture en Dirhams (MAD) : pour un audit ISO 14064 certifié, conservez la facture originale justifiant le calcul physique."
+    );
+  }
 
   let gwpFactor: number | null = null;
   let rawKg: number;
@@ -130,14 +143,20 @@ export function calculateEmission(input: ActivityCalculationInput): CalculationR
   const resultTCO2e = resultKgCO2e / 1000.0;
 
   // Calcul d'incertitude quadratique (u_rel = sqrt(u_A^2 + u_FE^2))
-  const uA = input.activityUncertaintyPct ?? 0.10;
+  // Majoration de 5% d'incertitude si dérivé d'une facture monétaire
+  const baseUA = input.activityUncertaintyPct ?? 0.10;
+  const uA = conversion.isMonetaryEstimate ? baseUA + 0.05 : baseUA;
   const uFE = input.factor.uncertaintyPct ?? 0.20;
   const uRel = Math.sqrt(Math.pow(uA, 2) + Math.pow(uFE, 2));
   const uAbsKg = resultKgCO2e * uRel;
 
-  const formula = gwpFactor !== null
-    ? `${conversion.convertedValue} ${input.factor.denominatorUnit} × ${input.factor.value} kg_${input.factor.gasType} × PRG(${gwpFactor}) = ${resultKgCO2e.toFixed(4)} kgCO2e`
-    : `${conversion.convertedValue} ${input.factor.denominatorUnit} × ${input.factor.value} kgCO2e/${input.factor.denominatorUnit} = ${resultKgCO2e.toFixed(4)} kgCO2e`;
+  let formula = gwpFactor !== null
+    ? `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × ${input.factor.value} kg_${input.factor.gasType} × PRG(${gwpFactor}) = ${resultKgCO2e.toFixed(4)} kgCO2e`
+    : `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × ${input.factor.value} kgCO2e/${input.factor.denominatorUnit} = ${resultKgCO2e.toFixed(4)} kgCO2e`;
+
+  if (conversion.isMonetaryEstimate) {
+    formula = `[${conversion.explanation}] ➔ ${formula}`;
+  }
 
   const trace: CalculationAuditTrace = {
     inputQuantity: input.quantity,
@@ -145,6 +164,7 @@ export function calculateEmission(input: ActivityCalculationInput): CalculationR
     convertedQuantity: conversion.convertedValue,
     standardUnit: input.factor.denominatorUnit,
     conversionExplanation: conversion.explanation,
+    isMonetaryEstimate: conversion.isMonetaryEstimate,
     factorId: input.factor.id,
     factorName: input.factor.name,
     factorValue: input.factor.value,

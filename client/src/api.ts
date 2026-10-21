@@ -236,5 +236,31 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data)
       })
+  },
+  units: {
+    getPresets: () => request<any[]>('/units/bill-presets'),
+    getRegistry: () => request<any>('/units/registry'),
+    convertBill: (data: { amountMad: number; presetId: string; customUnitPrice?: number }) =>
+      request<{
+        physicalQuantity: number;
+        physicalUnit: string;
+        unitPriceUsed: number;
+        preset: any;
+        explanationFr: string;
+        explanationEn: string;
+      }>('/units/convert-bill', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    convertQuantity: (data: { value: number; fromUnit: string; toUnit: string; unitPriceMad?: number; billPresetId?: string }) =>
+      request<{
+        convertedValue: number;
+        factorUsed: number;
+        explanation: string;
+        isMonetaryEstimate?: boolean;
+      }>('/units/convert-quantity', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
   }
 };

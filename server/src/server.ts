@@ -14,6 +14,14 @@ import {
   calculateCBAMSpecificEmbeddedEmissions,
   EmissionFactorInput
 } from './core/calculations.js';
+import {
+  convertQuantity,
+  areUnitsCompatible,
+  normalizeUnitCode,
+  convertBillToPhysical,
+  BILL_CONVERSION_PRESETS,
+  UNIT_REGISTRY
+} from './core/units.js';
 import { generateReportPdf, ReportPdfData } from './core/pdfReport.js';
 import { trialRouter } from './modules/trial.js';
 import { contentRouter } from './modules/content.js';
@@ -26,6 +34,46 @@ const JWT_SECRET = process.env.JWT_SECRET || 'atlas_carbone_secret_key_2026_maro
 
 app.use(cors());
 app.use(express.json());
+
+// Référentiel des Unités et Conversions de Factures (MAD -> Physique)
+app.get('/api/units/registry', (_req, res) => {
+  res.json(UNIT_REGISTRY);
+});
+
+app.get('/api/units/bill-presets', (_req, res) => {
+  res.json(Object.values(BILL_CONVERSION_PRESETS));
+});
+
+app.post('/api/units/convert-bill', (req, res) => {
+  const { amountMad, presetId, customUnitPrice } = req.body;
+  if (!amountMad || !presetId) {
+    return res.status(400).json({ error: "Champs obligatoires manquants (amountMad, presetId)." });
+  }
+
+  try {
+    const result = convertBillToPhysical(Number(amountMad), String(presetId), customUnitPrice ? Number(customUnitPrice) : undefined);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/units/convert-quantity', (req, res) => {
+  const { value, fromUnit, toUnit, unitPriceMad, billPresetId } = req.body;
+  if (value === undefined || !fromUnit || !toUnit) {
+    return res.status(400).json({ error: "Champs obligatoires manquants (value, fromUnit, toUnit)." });
+  }
+
+  try {
+    const result = convertQuantity(Number(value), String(fromUnit), String(toUnit), {
+      unitPriceMad: unitPriceMad ? Number(unitPriceMad) : undefined,
+      billPresetId: billPresetId ? String(billPresetId) : undefined
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(422).json({ error: err.message });
+  }
+});
 
 // Sous-routeurs métier
 app.use('/api/trial', trialRouter);
@@ -493,7 +541,10 @@ app.post('/api/organizations/:orgId/activities', authenticateToken, requireTenan
       unit: String(unit),
       factor: factorInput,
       activityUncertaintyPct: 0.05,
-      allowProvisionalScope1: Boolean(allowProvisionalScope1)
+      allowProvisionalScope1: Boolean(allowProvisionalScope1),
+      billAmountMad: req.body.billAmountMad ? Number(req.body.billAmountMad) : undefined,
+      billPresetId: req.body.billPresetId ? String(req.body.billPresetId) : undefined,
+      unitPriceMad: req.body.unitPriceMad ? Number(req.body.unitPriceMad) : undefined
     });
 
     const actId = `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;

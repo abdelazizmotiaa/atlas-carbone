@@ -73,6 +73,10 @@ export interface CalculationTrace {
   convertedQuantity: number;
   standardUnit: string;
   conversionExplanation: string;
+  isMonetaryEstimate?: boolean;
+  billAmountMad?: number;
+  billPresetId?: string;
+  unitPriceMad?: number;
   factorId: string;
   factorName: string;
   factorValue: number;

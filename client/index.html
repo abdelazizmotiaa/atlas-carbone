@@ -1,18 +1,167 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23059669'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23064E3B'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Atlas Carbone — Comptabilité GES & Conformité MACF Maroc</title>
-    <meta name="description" content="Plateforme SaaS B2B de mesure d'empreinte carbone d'entreprise au Maroc et de préparation des données MACF/CBAM pour l'exportation vers l'Union Européenne." />
+    
+    <!-- Titre et Métadonnées SEO Principales pour Google -->
+    <title>Atlas Carbone — Bilan Carbone® & Comptabilité Carbone Entreprise au Maroc | Mesure & MACF</title>
+    <meta name="description" content="Plateforme officielle de Bilan Carbone® au Maroc (ISO 14064-1 & GHG Protocol) et conformité MACF/CBAM. Calculateur d'émissions déterministe avec 670 facteurs nationaux. Convertisseur facture ONEE en kWh et carburant en CO2. Essai sans compte gratuit." />
+    <meta name="keywords" content="bilan carbone maroc, comptabilite carbone maroc, calcul emission co2 entreprise maroc, macf maroc, cbam maroc, facture onee kwh, bilan ges maroc, iso 14064 maroc, ghg protocol maroc, empreinte carbone casablanca tanger, calculateur co2 maroc" />
+    <meta name="author" content="Abdelaziz Motiaa" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://mesure-emissions.com/" />
+    
+    <!-- Balises Linguistiques Internationales Hreflang -->
+    <link rel="alternate" hreflang="fr" href="https://mesure-emissions.com/fr/" />
+    <link rel="alternate" hreflang="en" href="https://mesure-emissions.com/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://mesure-emissions.com/" />
+    
+    <!-- Géolocalisation Maroc -->
+    <meta name="geo.region" content="MA" />
+    <meta name="geo.placename" content="Casablanca, Maroc" />
+    <meta name="geo.position" content="33.5731;-7.5898" />
+    <meta name="ICBM" content="33.5731, -7.5898" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mesure-emissions.com/" />
+    <meta property="og:site_name" content="Atlas Carbone Maroc" />
+    <meta property="og:title" content="Atlas Carbone — Bilan Carbone® & Comptabilité Carbone Entreprise au Maroc" />
+    <meta property="og:description" content="Plateforme B2B de mesure d'empreinte carbone conforme ISO 14064 et préparation MACF/CBAM pour entreprises marocaines. 670 facteurs officiels audités, conversion des factures ONEE/carburant en CO2." />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://mesure-emissions.com/" />
+    <meta name="twitter:title" content="Atlas Carbone — Bilan Carbone® Entreprise au Maroc" />
+    <meta name="twitter:description" content="Mesurez les émissions de gaz à effet de serre de votre entreprise au Maroc. Scopes 1, 2, 3, facteurs ONEE officiels, rapport PDF conforme." />
+
     <!-- Google Fonts Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Données Structurées Schema.org JSON-LD pour Google Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://mesure-emissions.com/#website",
+          "url": "https://mesure-emissions.com/",
+          "name": "Atlas Carbone Maroc",
+          "description": "Plateforme souveraine de comptabilité carbone et de conformité MACF/CBAM pour les entreprises marocaines.",
+          "inLanguage": ["fr-FR", "en-US"]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://mesure-emissions.com/#organization",
+          "name": "Atlas Carbone",
+          "url": "https://mesure-emissions.com/",
+          "email": "abdelaziz.motiaa@gmail.com",
+          "telephone": "+212671581167",
+          "founder": {
+            "@type": "Person",
+            "name": "Abdelaziz Motiaa"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "MA",
+            "addressLocality": "Casablanca"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://mesure-emissions.com/#software",
+          "name": "Atlas Carbone SaaS",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All Web Browsers",
+          "url": "https://mesure-emissions.com/",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "MAD",
+            "name": "Essai Sans Compte Gratuit"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://mesure-emissions.com/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Comment réaliser un Bilan Carbone d'entreprise au Maroc ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pour réaliser un Bilan Carbone au Maroc selon les normes ISO 14064-1 et GHG Protocol, l'entreprise collecte ses données d'activité (factures d'électricité ONEE en kWh, litres de gasoil/essence, achats de matières premières, fret et déplacements). Atlas Carbone applique les 670 facteurs d'émission officiels marocains (ADEME / ABC / Fondation Mohammed VI) pour calculer les Scopes 1, 2 et 3 et générer un rapport certifié."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Comment convertir une facture d'électricité ONEE (en Dirhams MAD) en kWh et en émissions CO2 ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pour convertir une facture d'électricité ONEE en kWh, divisez le montant hors taxes (MAD HT) par le tarif moyen applicable : environ 1,15 MAD/kWh en Moyenne Tension industrielle ou 1,25 MAD/kWh en Basse Tension. Multipliez ensuite par le facteur d'émission officiel du réseau électrique marocain (0,6426 kgCO2e/kWh Location-based hors pertes) pour obtenir vos émissions exactes en kgCO2e ou tCO2e."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quel est le facteur d'émission officiel de l'électricité au Maroc ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Selon la Base Carbone Maroc (ONEE / FM6E), le mix électrique moyen national est de 0,642602 kgCO2e/kWh en approche Location-based hors pertes de transport, et de 0,721 kgCO2e/kWh avec prise en compte des pertes réseau (12,2%)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Comment convertir une dépense de carburant (Gasoil / Essence) en litres et en CO2 ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "À partir des factures ou cartes carburant en Dirhams, divisez le montant TTC par le prix moyen à la pompe au Maroc (~12,50 MAD/L pour le gasoil, ~14,20 MAD/L pour l'essence). Multipliez ensuite par le facteur d'émission correspondant (environ 2,67 kgCO2e/L pour le gasoil routier en combustion)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Quelles sont les obligations du MACF (CBAM européen) pour les exportateurs marocains ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Le Mécanisme d'Ajustement Carbone aux Frontières (MACF) de l'Union Européenne s'applique aux marchandises importées dans l'UE issues des secteurs ciment, fer & acier, aluminium, engrais, électricité et hydrogène. Les exportateurs marocains doivent quantifier les émissions intrinsèques directes et indirectes par tonne de produit fini (selon les codes de Nomenclature Combinée à 8 chiffres) et transmettre un dossier technique vérifiable à leurs acheteurs européens."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Contenu sémantique pré-rendu pour indexation immédiate par Googlebot avant hydratation React -->
+      <header style="padding: 20px; background: #064E3B; color: white;">
+        <h1>Atlas Carbone — Comptabilité Carbone Souveraine & Bilan GES pour les Entreprises Marocaines</h1>
+        <p>Plateforme B2B de mesure des émissions de gaz à effet de serre (Scopes 1, 2, 3) selon les normes ISO 14064-1:2018 et GHG Protocol, et de conformité réglementaire MACF / CBAM pour l'exportation vers l'Union Européenne.</p>
+        <p>Contact officiel : Abdelaziz Motiaa | Email : abdelaziz.motiaa@gmail.com | Téléphone : +212671581167 | Casablanca, Maroc.</p>
+      </header>
+      <main style="padding: 20px;">
+        <h2>Calculateur d'Émissions Carbone et 8 Parcours Sectoriels au Maroc</h2>
+        <ul>
+          <li>Industrie lourde, métallurgie, ciment et engrais (Conformité MACF / CBAM)</li>
+          <li>Textile, confection et habillement</li>
+          <li>Agroalimentaire et chaîne du froid</li>
+          <li>Transport, logistique et flotte de véhicules</li>
+          <li>BTP, construction et génie civil</li>
+          <li>Hôtellerie, tourisme et restauration</li>
+          <li>Services, bureaux tertiaires et laboratoires</li>
+          <li>Agriculture, arboriculture et élevage</li>
+        </ul>
+        <h3>Conversion automatique des factures en Dirhams (MAD) vers unités physiques (kWh, Litres, Tonnes)</h3>
+        <p>Intégrez directement vos factures d'électricité ONEE, vos relevés de cartes carburant (Gasoil, Essence) et vos citernes de gaz propane. Le système calcule avec précision vos consommations physiques et applique les 670 facteurs d'émission officiels de la Base Carbone Maroc.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

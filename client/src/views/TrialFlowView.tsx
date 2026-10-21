@@ -17,7 +17,8 @@ import {
   FileText,
   RotateCcw,
   HelpCircle,
-  Plus
+  Plus,
+  Receipt
 } from 'lucide-react';
 import { api, setGuestSessionId, setGuestToken, getGuestSessionId, getGuestToken, setStoredToken, setStoredOrgId } from '../api.js';
 import { Language, translations, formatNumber } from '../i18n.js';
@@ -52,6 +53,12 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
   const [calculating, setCalculating] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
 
+  // Assistant Factures en MAD
+  const [billPresets, setBillPresets] = useState<any[]>([]);
+  const [showBillHelper, setShowBillHelper] = useState(false);
+  const [helperPresetId, setHelperPresetId] = useState('electricite_onee_mt_indus');
+  const [helperAmountMad, setHelperAmountMad] = useState('');
+
   // Modal non-quantifié
   const [showUnqModal, setShowUnqModal] = useState(false);
   const [unqLabel, setUnqLabel] = useState('');
@@ -84,6 +91,8 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
       setCatalogOptions(opts);
       if (opts.length > 0) setSelectedFactorId(opts[0].id);
     }).catch(console.error);
+
+    api.units.getPresets().then(setBillPresets).catch(console.error);
   }, [selectedSector]);
 
   // Si une session existait déjà, charger ses données
@@ -365,6 +374,89 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                   <div className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-xl text-xs text-emerald-900">
                     <span className="font-bold">Exemple fictif : </span>
                     {lang === 'en' ? activeQuestion.example_fictif_en : activeQuestion.example_fictif_fr}
+                  </div>
+
+                  {/* Assistant conversion facture en Dirhams (MAD) */}
+                  <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-3 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-purple-950 font-bold">
+                        <Receipt className="w-4 h-4 text-purple-700" />
+                        <span>Vous avez une facture en Dirhams (ONEE, Gasoil, Gaz...) ?</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBillHelper(!showBillHelper)}
+                        className="text-purple-700 hover:text-purple-900 font-semibold underline text-xs"
+                      >
+                        {showBillHelper ? 'Fermer l’assistant' : 'Convertir depuis une facture (MAD)'}
+                      </button>
+                    </div>
+
+                    {showBillHelper && (
+                      <div className="pt-2 border-t border-purple-200/80 space-y-3">
+                        <p className="text-slate-600 text-[11px]">
+                          Indiquez le montant de votre facture en Dirhams. L'application calcule immédiatement la quantité physique équivalente (kWh, litres, kg) selon les tarifs officiels marocains (ONEE, carburant, etc.).
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1 text-[11px]">Type de facture</label>
+                            <select
+                              value={helperPresetId}
+                              onChange={e => setHelperPresetId(e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-white text-xs"
+                            >
+                              {billPresets.map((p: any) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.unitPriceMad} MAD/{p.physicalUnit})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1 text-[11px]">Montant en Dirhams (MAD)</label>
+                            <input
+                              type="number"
+                              step="any"
+                              placeholder="Ex: 8500"
+                              value={helperAmountMad}
+                              onChange={e => setHelperAmountMad(e.target.value)}
+                              className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg font-mono font-bold text-slate-900 bg-white text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {(() => {
+                          const p = billPresets.find((x: any) => x.id === helperPresetId) || billPresets[0];
+                          const amt = parseFloat(helperAmountMad) || 0;
+                          const derived = p && p.unitPriceMad > 0 ? amt / p.unitPriceMad : 0;
+
+                          if (amt <= 0) return null;
+
+                          return (
+                            <div className="bg-white p-2.5 rounded-lg border border-purple-200 flex items-center justify-between">
+                              <div>
+                                <span className="text-slate-500 text-[11px]">Quantité calculée : </span>
+                                <span className="font-mono font-bold text-purple-900 text-sm">
+                                  {derived.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} {p?.physicalUnit}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInputQuantity(parseFloat(derived.toFixed(2)));
+                                  if (p?.physicalUnit) setInputUnit(p.physicalUnit);
+                                  if (p?.factorId) setSelectedFactorId(p.factorId);
+                                  setShowBillHelper(false);
+                                }}
+                                className="px-3 py-1 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-lg transition"
+                              >
+                                Insérer dans la quantité
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {/* Champs de saisie physique */}

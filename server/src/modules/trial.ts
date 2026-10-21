@@ -143,7 +143,10 @@ trialRouter.post('/:sessionId/calculate', (req: Request, res: Response) => {
       unit: String(unit),
       factor: factorInput,
       activityUncertaintyPct: 0.05,
-      allowProvisionalScope1: Boolean(allowProvisionalScope1)
+      allowProvisionalScope1: Boolean(allowProvisionalScope1),
+      billAmountMad: req.body.billAmountMad ? Number(req.body.billAmountMad) : undefined,
+      billPresetId: req.body.billPresetId ? String(req.body.billPresetId) : undefined,
+      unitPriceMad: req.body.unitPriceMad ? Number(req.body.unitPriceMad) : undefined
     });
 
     const activities: any[] = JSON.parse(session.activities_json || '[]');

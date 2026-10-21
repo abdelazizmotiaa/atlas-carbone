@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /fr/
+Allow: /en/
+Allow: /api/news
+Allow: /api/guides
+Allow: /api/sectors
+
+Disallow: /api/organizations/
+Disallow: /api/auth/
+Disallow: /api/factors
+Disallow: /api/trial/*/pdf
+
+Sitemap: https://mesure-emissions.com/sitemap.xml
