@@ -343,13 +343,49 @@ export const api = {
     }
   },
   commercial: {
-    getQuotes: () => request<any[]>('/commercial/quotes'),
-    createQuote: (data: any) =>
-      request<any>('/commercial/quotes', {
+    getQuotes: (orgId?: string) =>
+      request<any[]>(orgId ? `/organizations/${orgId}/commercial/quotes` : '/commercial/quotes'),
+    createQuote: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/commercial/quotes` : '/commercial/quotes', {
         method: 'POST',
         body: JSON.stringify(data)
       }),
-    getSubscription: () => request<any>('/commercial/subscription')
+    getSubscription: (orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/commercial/subscription` : '/commercial/subscription'),
+    upgradeSubscription: (data: { newPlanId: string }, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/commercial/subscription/upgrade` : '/commercial/subscription/upgrade', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getQuotePdfUrl: (quoteId: string, orgId?: string) => {
+      const token = getStoredToken();
+      const base = orgId
+        ? `${API_BASE}/organizations/${orgId}/commercial/quotes/${quoteId}/pdf`
+        : `${API_BASE}/commercial/quotes/${quoteId}/pdf`;
+      return token ? `${base}?token=${token}${orgId ? `&orgId=${orgId}` : ''}` : base;
+    }
+  },
+  pricing: {
+    getPlans: () => request<any>('/pricing/plans'),
+    checkout: (data: any) =>
+      request<any>('/pricing/checkout', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getOrder: (orderId: string) => request<any>(`/pricing/orders/${orderId}`),
+    payCmi: (orderId: string) =>
+      request<any>(`/pricing/orders/${orderId}/pay-cmi`, {
+        method: 'POST'
+      }),
+    submitTransferProof: (orderId: string, data: any) =>
+      request<any>(`/pricing/orders/${orderId}/transfer-proof`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    confirmOrder: (orderId: string) =>
+      request<any>(`/pricing/orders/${orderId}/confirm`, {
+        method: 'POST'
+      })
   },
   leads: {
     submit: (data: any) =>
@@ -380,35 +416,6 @@ export const api = {
         explanation: string;
         isMonetaryEstimate?: boolean;
       }>('/units/convert-quantity', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      })
-  },
-  pricing: {
-    getPlans: () => request<{
-      currency: string;
-      symbol: string;
-      plans: any[];
-      banking: any;
-      disclaimerFr: string;
-      disclaimerEn: string;
-    }>('/pricing/plans'),
-    checkout: (data: any) =>
-      request<{
-        message: string;
-        orderId: string;
-        orderNumber: string;
-        planId: string;
-        planName: string;
-        amountHT: number;
-        tvaAmount: number;
-        totalTTC: number;
-        currency: string;
-        paymentStatus: string;
-        paymentReference: string;
-        banking: any;
-        authResult?: any;
-      }>('/pricing/checkout', {
         method: 'POST',
         body: JSON.stringify(data)
       })

@@ -24,6 +24,7 @@ import {
 } from './core/units.js';
 import { generateReportPdf, ReportPdfData } from './core/pdfReport.js';
 import { generateExcelReport, ExcelReportData } from './core/excelReport.js';
+import { generateQuotePdf } from './core/quotePdf.js';
 import { trialRouter } from './modules/trial.js';
 import { contentRouter } from './modules/content.js';
 import { assistantRouter } from './modules/assistant.js';
@@ -1835,16 +1836,29 @@ app.get('/api/commercial/quotes', authenticateToken, requireTenant, (req, res) =
 });
 
 app.post('/api/commercial/quotes', authenticateToken, requireTenant, (req, res) => {
-  const { plan_name, extra_sites_count, extra_users_count, discount_mad } = req.body;
+  const { plan_name, extra_sites_count, extra_users_count, discount_mad, base_amount_mad } = req.body;
   const orgId = req.organizationId!;
 
-  let basePrice = 12000; // Essentiel
-  if (plan_name === 'Entreprise') basePrice = 24000;
-  if (plan_name === 'Export Europe') basePrice = 45000;
+  let basePrice = 12000; // Défaut
+  if (base_amount_mad !== undefined) {
+    basePrice = Number(base_amount_mad);
+  } else if (plan_name === 'pme_climat' || plan_name === 'Pack PME Climat') {
+    basePrice = 4900;
+  } else if (plan_name === 'entreprise_macf' || plan_name === 'Pack Entreprise & Exportateur MACF') {
+    basePrice = 14500;
+  } else if (plan_name === 'grand_compte' || plan_name === 'Pack Grand Compte & Industrie') {
+    basePrice = 29000;
+  } else if (plan_name === 'Essentiel') {
+    basePrice = 12000;
+  } else if (plan_name === 'Entreprise') {
+    basePrice = 24000;
+  } else if (plan_name === 'Export Europe') {
+    basePrice = 45000;
+  }
 
   const sitesCost = (extra_sites_count || 0) * 2000;
   const usersCost = (extra_users_count || 0) * 800;
-  const subtotalHT = basePrice + sitesCost + usersCost - (discount_mad || 0);
+  const subtotalHT = Math.max(0, basePrice + sitesCost + usersCost - (discount_mad || 0));
   const tvaAmount = subtotalHT * 0.20;
   const totalTTC = subtotalHT + tvaAmount;
 
@@ -1866,6 +1880,9 @@ app.post('/api/commercial/quotes', authenticateToken, requireTenant, (req, res) 
   res.status(201).json({
     id: quoteId,
     quoteNumber,
+    baseAmountMAD: basePrice,
+    extraSitesCostMAD: sitesCost,
+    extraUsersCostMAD: usersCost,
     subtotalHT,
     tvaAmount,
     totalTTC,
@@ -1873,9 +1890,101 @@ app.post('/api/commercial/quotes', authenticateToken, requireTenant, (req, res) 
   });
 });
 
+// Téléchargement du devis proforma officiel au format PDF
+app.get(['/api/commercial/quotes/:quoteId/pdf', '/api/organizations/:orgId/commercial/quotes/:quoteId/pdf'], authenticateToken, requireTenant, async (req, res) => {
+  const quoteId = req.params.quoteId;
+  const orgId = req.organizationId!;
+
+  const quote: any = db.prepare(`
+    SELECT q.*, o.name as org_name, o.city as org_city, o.ice as org_ice
+    FROM quotes q
+    JOIN organizations o ON q.organization_id = o.id
+    WHERE (q.id = ? OR q.quote_number = ?) AND q.organization_id = ?
+  `).get(quoteId, quoteId, orgId);
+
+  if (!quote) {
+    return res.status(404).json({ error: "Devis introuvable." });
+  }
+
+  try {
+    const user = req.user;
+    const subtotalHT = Number(quote.total_ttc_mad) - Number(quote.tva_amount_mad);
+    const pdfBuffer = await generateQuotePdf({
+      quoteNumber: quote.quote_number,
+      date: new Date(quote.created_at).toLocaleDateString('fr-FR'),
+      validUntil: new Date(quote.valid_until || Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
+      companyName: quote.org_name || 'Entreprise',
+      contactName: user?.full_name,
+      contactEmail: user?.email,
+      city: quote.org_city || 'Casablanca',
+      ice: quote.org_ice || '003456789000045',
+      planName: quote.plan_name,
+      baseAmountMAD: Number(quote.base_amount_mad),
+      extraSitesCount: Number(quote.extra_sites_count || 0),
+      extraSitesCostMAD: Number(quote.extra_sites_count || 0) * 2000,
+      extraUsersCount: Number(quote.extra_users_count || 0),
+      extraUsersCostMAD: Number(quote.extra_users_count || 0) * 800,
+      discountMAD: Number(quote.discount_mad || 0),
+      subtotalHT: subtotalHT,
+      tvaRate: Number(quote.tva_rate || 0.20),
+      tvaAmountMAD: Number(quote.tva_amount_mad),
+      totalTTCMAD: Number(quote.total_ttc_mad),
+      status: quote.status
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Devis_AtlasCarbone_${quote.quote_number}.pdf`);
+    res.send(pdfBuffer);
+  } catch (err: any) {
+    console.error("Erreur génération PDF devis:", err);
+    res.status(500).json({ error: "Échec de génération du devis PDF: " + err.message });
+  }
+});
+
 app.get('/api/commercial/subscription', authenticateToken, requireTenant, (req, res) => {
   const sub = db.prepare('SELECT * FROM subscriptions WHERE organization_id = ?').get(req.organizationId!);
   res.json(sub);
+});
+
+// Mise à niveau d'abonnement (Upgrade)
+app.post(['/api/commercial/subscription/upgrade', '/api/organizations/:orgId/commercial/subscription/upgrade'], authenticateToken, requireTenant, requireRole(['admin']), (req, res) => {
+  const orgId = req.organizationId!;
+  const { newPlanId } = req.body;
+
+  const PLAN_LIMITS: Record<string, { name: string; priceMAD: number; sites: number; users: number; cbam: number }> = {
+    pme_climat: { name: 'Pack PME Climat', priceMAD: 4900, sites: 1, users: 3, cbam: 0 },
+    entreprise_macf: { name: 'Pack Entreprise & Exportateur MACF', priceMAD: 14500, sites: 5, users: 10, cbam: 1 },
+    grand_compte: { name: 'Pack Grand Compte & Industrie', priceMAD: 29000, sites: 99, users: 99, cbam: 1 },
+    Essentiel: { name: 'Pack Essentiel', priceMAD: 12000, sites: 1, users: 3, cbam: 0 },
+    Entreprise: { name: 'Pack Entreprise', priceMAD: 24000, sites: 5, users: 10, cbam: 1 },
+    'Export Europe': { name: 'Pack Export Europe MACF', priceMAD: 45000, sites: 10, users: 20, cbam: 1 }
+  };
+
+  const targetPlan = PLAN_LIMITS[newPlanId] || PLAN_LIMITS['entreprise_macf'];
+  const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+  const existingSub: any = db.prepare('SELECT * FROM subscriptions WHERE organization_id = ?').get(orgId);
+  if (existingSub) {
+    db.prepare(`
+      UPDATE subscriptions
+      SET plan_name = ?, status = 'active', sites_limit = ?, users_limit = ?, cbam_access = ?, current_period_end = ?
+      WHERE organization_id = ?
+    `).run(targetPlan.name, targetPlan.sites, targetPlan.users, targetPlan.cbam, oneYearFromNow, orgId);
+  } else {
+    db.prepare(`
+      INSERT INTO subscriptions (id, organization_id, plan_name, status, sites_limit, users_limit, cbam_access, current_period_end, created_at)
+      VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
+    `).run(`sub-${Date.now()}`, orgId, targetPlan.name, targetPlan.sites, targetPlan.users, targetPlan.cbam, oneYearFromNow, new Date().toISOString());
+  }
+
+  logAudit(orgId, req.user!.id, 'UPGRADE_SUBSCRIPTION', 'subscriptions', orgId, { newPlan: targetPlan.name, limits: targetPlan });
+
+  const updatedSub = db.prepare('SELECT * FROM subscriptions WHERE organization_id = ?').get(orgId);
+  res.json({
+    success: true,
+    message: `Abonnement mis à niveau avec succès vers : ${targetPlan.name}.`,
+    subscription: updatedSub
+  });
 });
 
 // -------------------------------------------------------------

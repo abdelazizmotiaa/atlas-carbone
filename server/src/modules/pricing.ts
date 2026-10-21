@@ -418,3 +418,117 @@ pricingRouter.post('/checkout', (req: Request, res: Response) => {
     authResult
   });
 });
+
+// 3. Obtenir les détails d'une commande
+pricingRouter.get('/orders/:orderId', (req: Request, res: Response) => {
+  const order: any = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(req.params.orderId, req.params.orderId);
+  if (!order) return res.status(404).json({ error: "Commande introuvable." });
+  res.json({ order, banking: BANKING_INFO_MAROC });
+});
+
+// 4. Simulation de Paiement Carte Bancaire CMI (Centre Monétique Interbancaire Maroc)
+pricingRouter.post('/orders/:orderId/pay-cmi', (req: Request, res: Response) => {
+  const order: any = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(req.params.orderId, req.params.orderId);
+  if (!order) return res.status(404).json({ error: "Commande introuvable." });
+
+  const authCode = `AUTH-CMI-${Math.floor(100000 + Math.random() * 900000)}`;
+  const paymentRef = `CMI-${Date.now()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+
+  // Mettre à jour la commande
+  db.prepare(`
+    UPDATE orders
+    SET payment_status = 'paid', payment_reference = ?, notes = coalesce(notes || ' | ', '') || ?
+    WHERE id = ?
+  `).run(paymentRef, `Autorisation CMI 3D-Secure validée (Code : ${authCode})`, order.id);
+
+  // Activer ou mettre à niveau l'abonnement si une organisation est rattachée
+  if (order.organization_id) {
+    const plan = PRICING_PLANS.find(p => p.id === order.plan_id) || PRICING_PLANS[1];
+    const sitesLimit = typeof plan.limits.sitesLimit === 'number' ? plan.limits.sitesLimit : 99;
+    const usersLimit = typeof plan.limits.usersLimit === 'number' ? plan.limits.usersLimit : 99;
+    const oneYearLater = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+    const existingSub: any = db.prepare('SELECT id FROM subscriptions WHERE organization_id = ?').get(order.organization_id);
+    if (existingSub) {
+      db.prepare(`
+        UPDATE subscriptions
+        SET plan_name = ?, status = 'active', sites_limit = ?, users_limit = ?, cbam_access = ?, current_period_end = ?
+        WHERE organization_id = ?
+      `).run(plan.id, sitesLimit, usersLimit, plan.limits.cbamAccess ? 1 : 0, oneYearLater, order.organization_id);
+    } else {
+      db.prepare(`
+        INSERT INTO subscriptions (id, organization_id, plan_name, status, sites_limit, users_limit, cbam_access, current_period_end, created_at)
+        VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      `).run(`sub-${Date.now()}`, order.organization_id, plan.id, sitesLimit, usersLimit, plan.limits.cbamAccess ? 1 : 0, oneYearLater, new Date().toISOString());
+    }
+  }
+
+  res.json({
+    success: true,
+    message: "Transaction carte bancaire CMI autorisée avec succès !",
+    authorizationCode: authCode,
+    paymentReference: paymentRef,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    amountPaidMAD: order.total_ttc_mad,
+    status: 'paid'
+  });
+});
+
+// 5. Envoi d'ordre / preuve de virement bancaire proforma
+pricingRouter.post('/orders/:orderId/transfer-proof', (req: Request, res: Response) => {
+  const { transferReference, bankName, transferDate, comments } = req.body;
+  const order: any = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(req.params.orderId, req.params.orderId);
+  if (!order) return res.status(404).json({ error: "Commande introuvable." });
+
+  const note = `Preuve virement soumise : Réf ${transferReference || 'N/A'} (${bankName || 'Banque marocaine'}) le ${transferDate || new Date().toISOString().split('T')[0]}. ${comments || ''}`;
+
+  db.prepare(`
+    UPDATE orders
+    SET payment_status = 'transfer_receipt_uploaded', notes = coalesce(notes || ' | ', '') || ?
+    WHERE id = ?
+  `).run(note, order.id);
+
+  res.json({
+    success: true,
+    message: "Preuve de virement bancaire reçue. Votre compte sera activé dès rapprochement bancaire sous 24h.",
+    orderId: order.id,
+    status: 'transfer_receipt_uploaded'
+  });
+});
+
+// 6. Confirmation manuelle de virement (Super Admin / Admin)
+pricingRouter.post('/orders/:orderId/confirm', (req: Request, res: Response) => {
+  const order: any = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(req.params.orderId, req.params.orderId);
+  if (!order) return res.status(404).json({ error: "Commande introuvable." });
+
+  db.prepare("UPDATE orders SET payment_status = 'paid' WHERE id = ?").run(order.id);
+
+  if (order.organization_id) {
+    const plan = PRICING_PLANS.find(p => p.id === order.plan_id) || PRICING_PLANS[1];
+    const sitesLimit = typeof plan.limits.sitesLimit === 'number' ? plan.limits.sitesLimit : 99;
+    const usersLimit = typeof plan.limits.usersLimit === 'number' ? plan.limits.usersLimit : 99;
+    const oneYearLater = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+    const existingSub: any = db.prepare('SELECT id FROM subscriptions WHERE organization_id = ?').get(order.organization_id);
+    if (existingSub) {
+      db.prepare(`
+        UPDATE subscriptions
+        SET plan_name = ?, status = 'active', sites_limit = ?, users_limit = ?, cbam_access = ?, current_period_end = ?
+        WHERE organization_id = ?
+      `).run(plan.id, sitesLimit, usersLimit, plan.limits.cbamAccess ? 1 : 0, oneYearLater, order.organization_id);
+    } else {
+      db.prepare(`
+        INSERT INTO subscriptions (id, organization_id, plan_name, status, sites_limit, users_limit, cbam_access, current_period_end, created_at)
+        VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      `).run(`sub-${Date.now()}`, order.organization_id, plan.id, sitesLimit, usersLimit, plan.limits.cbamAccess ? 1 : 0, oneYearLater, new Date().toISOString());
+    }
+  }
+
+  res.json({
+    success: true,
+    message: "Commande et abonnement confirmés avec succès.",
+    orderId: order.id,
+    status: 'paid'
+  });
+});

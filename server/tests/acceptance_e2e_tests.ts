@@ -94,7 +94,7 @@ function logTest(num: number, name: string, passed: boolean, details: string, er
 
 async function runAcceptanceTests() {
   console.log('\n================================================================');
-  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (26 TESTS)');
+  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (28 TESTS)');
   console.log('================================================================\n');
 
   let guestSessionId = '';
@@ -1124,6 +1124,145 @@ async function runAcceptanceTests() {
     }
   } catch (err: any) {
     logTest(26, 'Registre Installations & Dossier Déclarant UE', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 27: Modélisation de Devis Personnalisé en Dirhams (MAD) & Devis PDF Proforma avec RIB Officiel
+  // ============================================================================
+  try {
+    // 1. Émission d'un devis sur mesure avec sites et utilisateurs additionnels
+    const createQuoteRes = await request('/api/commercial/quotes', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        plan_name: 'Pack Entreprise & Exportateur MACF',
+        base_amount_mad: 14500,
+        extra_sites_count: 2,
+        extra_users_count: 5,
+        discount_mad: 1500
+      }
+    });
+
+    const quoteData = createQuoteRes.data;
+    const isQuoteCreated = createQuoteRes.status === 201 &&
+      quoteData.baseAmountMAD === 14500 &&
+      quoteData.extraSitesCostMAD === 4000 &&
+      quoteData.extraUsersCostMAD === 4000 &&
+      quoteData.subtotalHT === 21000 &&
+      quoteData.tvaAmount === 4200 &&
+      quoteData.totalTTC === 25200 &&
+      quoteData.currency === 'MAD' &&
+      String(quoteData.quoteNumber).startsWith('DEV-2026-');
+
+    const quoteId = quoteData.id;
+
+    // 2. Téléchargement du devis PDF proforma officiel côté serveur
+    const pdfRes = await request(`/api/organizations/org-agro-atlas/commercial/quotes/${quoteId}/pdf`, {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      responseType: 'buffer'
+    });
+
+    const isPdfValid = pdfRes.status === 200 &&
+      pdfRes.headers['content-type']?.includes('application/pdf') &&
+      pdfRes.headers['content-disposition']?.includes('attachment') &&
+      pdfRes.data.length > 1000 &&
+      pdfRes.data.slice(0, 4).toString() === '%PDF';
+
+    // 3. Contrôle d'accès inter-entreprises (Métal ne peut pas télécharger le devis d'Agro)
+    const crossTenantPdfRes = await request(`/api/organizations/org-agro-atlas/commercial/quotes/${quoteId}/pdf`, {
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-agro-atlas' },
+      responseType: 'buffer'
+    });
+    const isIsolated = crossTenantPdfRes.status === 403;
+
+    if (isQuoteCreated && isPdfValid && isIsolated) {
+      logTest(27, 'Modélisation de Devis Personnalisé en MAD & Devis PDF Proforma avec RIB Officiel', true,
+        `Devis ${quoteData.quoteNumber} (21 000 MAD HT + 4 200 TVA 20% = 25 200 MAD TTC) généré. PDF Proforma officiel produit (${pdfRes.data.length} octets) et isolation cross-tenant validée (HTTP 403).`);
+    } else {
+      logTest(27, 'Modélisation de Devis Personnalisé en MAD', false,
+        `quoteCreated=${isQuoteCreated}, pdfValid=${isPdfValid}, isolated=${isIsolated}, data=${JSON.stringify(quoteData)}`);
+    }
+  } catch (err: any) {
+    logTest(27, 'Modélisation de Devis Personnalisé en MAD', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 28: Passerelle de Paiement Dirhams (Simulation CMI & Virement Proforma) et Upgrade d'Abonnement
+  // ============================================================================
+  try {
+    // 1. Commande en Dirhams avec Virement Bancaire Proforma
+    const checkoutRes = await request('/api/pricing/checkout', {
+      method: 'POST',
+      body: {
+        planId: 'entreprise_macf',
+        companyName: 'Atlas Agro-Alimentaire SARL',
+        contactName: 'Nadia El Fassi',
+        email: 'nadia@agro-atlas.ma',
+        paymentMethod: 'bank_transfer'
+      }
+    });
+
+    const orderData = checkoutRes.data;
+    const orderId = orderData.orderId;
+    const isOrderCreated = checkoutRes.status === 201 &&
+      String(orderData.orderNumber).startsWith('BC-2026-') &&
+      orderData.totalTTC === 17400 &&
+      orderData.paymentStatus === 'pending_transfer' &&
+      orderData.banking?.rib === '007 780 0001234567890123 45' &&
+      orderData.banking?.contactFacturation?.responsable === 'Abdelaziz Motiaa';
+
+    // 2. Transmission de la preuve d'ordre de virement bancaire
+    const proofRes = await request(`/api/pricing/orders/${orderId}/transfer-proof`, {
+      method: 'POST',
+      body: {
+        transferReference: 'VIR-ATTIJARI-987654',
+        bankName: 'Attijariwafa bank Casablanca Anfa',
+        transferDate: '2026-10-21',
+        comments: 'Ordre de virement cacheté et signé'
+      }
+    });
+    const isProofUploaded = proofRes.status === 200 && proofRes.data?.status === 'transfer_receipt_uploaded';
+
+    // 3. Validation et confirmation administrative de réception du virement
+    const confirmRes = await request(`/api/pricing/orders/${orderId}/confirm`, {
+      method: 'POST'
+    });
+    const isConfirmed = confirmRes.status === 200 && confirmRes.data?.status === 'paid';
+
+    // 4. Simulation de paiement par Carte Bancaire CMI (Centre Monétique Interbancaire Maroc)
+    const cmiRes = await request(`/api/pricing/orders/${orderId}/pay-cmi`, {
+      method: 'POST'
+    });
+    const isCmiAuthorized = cmiRes.status === 200 &&
+      String(cmiRes.data?.authorizationCode).startsWith('AUTH-CMI-') &&
+      String(cmiRes.data?.paymentReference).startsWith('CMI-') &&
+      cmiRes.data?.status === 'paid';
+
+    // 5. Mise à niveau (Upgrade) de l'abonnement en ligne avec déblocage immédiat des quotas
+    const upgradeRes = await request('/api/organizations/org-agro-atlas/commercial/subscription/upgrade', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        newPlanId: 'grand_compte'
+      }
+    });
+
+    const isUpgraded = upgradeRes.status === 200 &&
+      upgradeRes.data?.subscription?.plan_name === 'Pack Grand Compte & Industrie' &&
+      upgradeRes.data?.subscription?.sites_limit === 99 &&
+      upgradeRes.data?.subscription?.users_limit === 99 &&
+      upgradeRes.data?.subscription?.cbam_access === 1 &&
+      upgradeRes.data?.subscription?.status === 'active';
+
+    if (isOrderCreated && isProofUploaded && isConfirmed && isCmiAuthorized && isUpgraded) {
+      logTest(28, 'Passerelle Paiement MAD (Simulation CMI & Virement Proforma) & Upgrade d’Abonnement', true,
+        `Commande ${orderData.orderNumber} (17 400 MAD TTC) générée avec RIB marocain officiel. Preuve de virement, confirmation admin, autorisation 3D-Secure CMI (${cmiRes.data.authorizationCode}), et upgrade Grand Compte (sites/users illimités) validés.`);
+    } else {
+      logTest(28, 'Passerelle Paiement MAD & Upgrade', false,
+        `orderCreated=${isOrderCreated}, proofUploaded=${isProofUploaded}, confirmed=${isConfirmed}, cmiAuthorized=${isCmiAuthorized}, upgraded=${isUpgraded}`);
+    }
+  } catch (err: any) {
+    logTest(28, 'Passerelle Paiement MAD & Upgrade', false, err.message);
   }
 
   // ============================================================================
