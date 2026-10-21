@@ -375,6 +375,31 @@ export function initDatabaseSchema() {
       created_at TEXT NOT NULL
     );
 
+    -- 20. Commandes et Souscriptions en Dirhams Marocains (MAD)
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      order_number TEXT UNIQUE NOT NULL,
+      organization_id TEXT,
+      company_name TEXT NOT NULL,
+      contact_name TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      contact_phone TEXT,
+      ice_number TEXT,
+      city TEXT,
+      plan_id TEXT NOT NULL,
+      plan_name TEXT NOT NULL,
+      billing_cycle TEXT NOT NULL DEFAULT 'annual', -- 'annual', 'monthly'
+      amount_ht_mad REAL NOT NULL,
+      tva_rate REAL DEFAULT 0.20,
+      tva_amount_mad REAL NOT NULL,
+      total_ttc_mad REAL NOT NULL,
+      payment_method TEXT NOT NULL, -- 'cmi_card', 'bank_transfer', 'quote'
+      payment_status TEXT NOT NULL DEFAULT 'pending', -- 'paid', 'pending', 'cancelled'
+      payment_reference TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+
     -- Index d'optimisation
     CREATE INDEX IF NOT EXISTS idx_activity_records_period ON activity_records(reporting_period_id);
     CREATE INDEX IF NOT EXISTS idx_activity_records_org ON activity_records(organization_id);
@@ -385,5 +410,6 @@ export function initDatabaseSchema() {
     CREATE INDEX IF NOT EXISTS idx_guest_sessions_token ON guest_sessions(session_token);
     CREATE INDEX IF NOT EXISTS idx_news_status ON news_articles(status);
     CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
+    CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
   `);
 }

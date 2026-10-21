@@ -26,6 +26,7 @@ import { generateReportPdf, ReportPdfData } from './core/pdfReport.js';
 import { trialRouter } from './modules/trial.js';
 import { contentRouter } from './modules/content.js';
 import { assistantRouter } from './modules/assistant.js';
+import { pricingRouter } from './modules/pricing.js';
 import { SECTOR_PROFILES } from './modules/sectors.js';
 
 const app = express();
@@ -77,6 +78,7 @@ app.post('/api/units/convert-quantity', (req, res) => {
 
 // Sous-routeurs métier
 app.use('/api/trial', trialRouter);
+app.use('/api/pricing', pricingRouter);
 app.use('/api', contentRouter);
 app.use('/api/assistant', assistantRouter);
 

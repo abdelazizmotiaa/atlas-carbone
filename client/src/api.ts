@@ -157,7 +157,16 @@ export const api = {
   },
   trial: {
     start: (data: { company_name: string; sector: string }) =>
-      request<{ sessionId: string; sessionToken: string; company_name: string; sector: string; expiresAt: string }>('/trial/start', {
+      request<{
+        sessionId: string;
+        sessionToken: string;
+        company_name: string;
+        sector: string;
+        expiresAt: string;
+        remainingSeconds?: number;
+        maxDurationSeconds?: number;
+        maxDurationHours?: number;
+      }>('/trial/start', {
         method: 'POST',
         body: JSON.stringify(data)
       }),
@@ -259,6 +268,35 @@ export const api = {
         explanation: string;
         isMonetaryEstimate?: boolean;
       }>('/units/convert-quantity', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
+  },
+  pricing: {
+    getPlans: () => request<{
+      currency: string;
+      symbol: string;
+      plans: any[];
+      banking: any;
+      disclaimerFr: string;
+      disclaimerEn: string;
+    }>('/pricing/plans'),
+    checkout: (data: any) =>
+      request<{
+        message: string;
+        orderId: string;
+        orderNumber: string;
+        planId: string;
+        planName: string;
+        amountHT: number;
+        tvaAmount: number;
+        totalTTC: number;
+        currency: string;
+        paymentStatus: string;
+        paymentReference: string;
+        banking: any;
+        authResult?: any;
+      }>('/pricing/checkout', {
         method: 'POST',
         body: JSON.stringify(data)
       })

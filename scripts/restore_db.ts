@@ -27,11 +27,12 @@ function resolveDatabasePath(): string {
 const DB_PATH = resolveDatabasePath();
 const BACKUPS_DIR = path.resolve(path.dirname(DB_PATH), 'backups');
 
-export function restoreDatabase(backupFileOrPath: string): {
+export function restoreDatabase(backupFileOrPath: string, targetDbPath?: string): {
   restoredFrom: string;
   integrityOk: boolean;
   stats: Record<string, number>;
 } {
+  const destPath = targetDbPath || DB_PATH;
   let targetPath = backupFileOrPath;
   if (!fs.existsSync(targetPath)) {
     targetPath = path.join(BACKUPS_DIR, backupFileOrPath);
@@ -54,23 +55,23 @@ export function restoreDatabase(backupFileOrPath: string): {
   }
 
   // 2. Sauvegarde de sécurité pré-restauration de la base active si elle existe
-  if (fs.existsSync(DB_PATH)) {
-    const preRestoreSafety = `${DB_PATH}.pre_restore_${Date.now()}.bak`;
-    fs.copyFileSync(DB_PATH, preRestoreSafety);
+  if (fs.existsSync(destPath) && destPath === DB_PATH) {
+    const preRestoreSafety = `${destPath}.pre_restore_${Date.now()}.bak`;
+    fs.copyFileSync(destPath, preRestoreSafety);
     console.log(`🛡️ Copie de sécurité de la base actuelle créée : ${path.basename(preRestoreSafety)}`);
   }
 
   // 3. Remplacement physique
-  fs.copyFileSync(targetPath, DB_PATH);
+  fs.copyFileSync(targetPath, destPath);
 
-  // Supprimer les fichiers WAL et SHM résiduels s'ils existent
-  const walPath = `${DB_PATH}-wal`;
-  const shmPath = `${DB_PATH}-shm`;
+  // Supprimer les fichiers WAL et SHM résiduels s'ils existent pour la cible
+  const walPath = `${destPath}-wal`;
+  const shmPath = `${destPath}-shm`;
   if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
   if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
 
   // 4. Contrôle d'intégrité SQLite
-  const db = new DatabaseSync(DB_PATH);
+  const db = new DatabaseSync(destPath);
   let integrityOk = false;
   const stats: Record<string, number> = {};
 

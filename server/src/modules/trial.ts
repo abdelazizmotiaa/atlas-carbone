@@ -14,8 +14,9 @@ import { SECTOR_PROFILES } from './sectors.js';
 
 export const trialRouter = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'atlas_carbone_secret_key_2026_maroc';
+export const TRIAL_MAX_DURATION_MS = 3 * 60 * 60 * 1000; // 3 heures d'évaluation démo
 
-function verifyGuestAccess(req: Request, res: Response, sessionId: string): any {
+function verifyGuestAccess(req: Request, res: Response, sessionId: string, enforceThreeHourLimit = false): any {
   const token = (req.headers['x-guest-token'] as string) || (req.headers['authorization']?.replace(/^Bearer\s+/i, ''));
   if (!token) {
     res.status(401).json({ error: "Accès refusé : jeton de session invitée manquant (X-Guest-Token ou Authorization Bearer requis)." });
@@ -39,6 +40,24 @@ function verifyGuestAccess(req: Request, res: Response, sessionId: string): any 
     return null;
   }
 
+  // Contrôle de la limite d'évaluation de 3 heures (Demo Paywall)
+  if (enforceThreeHourLimit) {
+    const createdAtMs = new Date(session.created_at).getTime();
+    const elapsedMs = Date.now() - createdAtMs;
+    if (elapsedMs > TRIAL_MAX_DURATION_MS) {
+      res.status(402).json({
+        error: "PAYMENT_REQUIRED",
+        code: "TRIAL_LIMIT_EXCEEDED",
+        message: "Votre session d'évaluation démo gratuite de 3 heures est terminée. Veuillez souscrire à une offre annuelle en Dirhams Marocains (MAD) pour poursuivre vos calculs et générer votre bilan complet.",
+        remainingSeconds: 0,
+        elapsedSeconds: Math.floor(elapsedMs / 1000),
+        maxDurationHours: 3,
+        expired: true
+      });
+      return null;
+    }
+  }
+
   return session;
 }
 
@@ -58,7 +77,7 @@ trialRouter.post('/start', (req: Request, res: Response) => {
   const sessionId = `guest-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const sessionToken = crypto.randomBytes(32).toString('hex');
   const createdAt = new Date().toISOString();
-  // 7 jours de validité
+  // 7 jours de validité de conservation
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const initialSummary = {
@@ -84,7 +103,11 @@ trialRouter.post('/start', (req: Request, res: Response) => {
     company_name,
     sector,
     expiresAt,
-    retentionNotice: "Votre session d'essai est conservée de manière isolée pendant 7 jours. Vous pourrez la rattacher à un compte à tout moment."
+    createdAt,
+    maxDurationSeconds: Math.floor(TRIAL_MAX_DURATION_MS / 1000),
+    maxDurationHours: 3,
+    remainingSeconds: Math.floor(TRIAL_MAX_DURATION_MS / 1000),
+    retentionNotice: "Votre session d'essai est accessible pendant 3 heures et conservée pendant 7 jours. Vous pourrez la débloquer ou la rattacher à un compte à tout moment."
   });
 });
 
@@ -92,6 +115,11 @@ trialRouter.post('/start', (req: Request, res: Response) => {
 trialRouter.get('/:sessionId', (req: Request, res: Response) => {
   const session = verifyGuestAccess(req, res, req.params.sessionId);
   if (!session) return;
+
+  const createdAtMs = new Date(session.created_at).getTime();
+  const elapsedMs = Math.max(0, Date.now() - createdAtMs);
+  const remainingSeconds = Math.max(0, Math.floor((TRIAL_MAX_DURATION_MS - elapsedMs) / 1000));
+  const isExpired = remainingSeconds <= 0;
 
   res.json({
     id: session.id,
@@ -101,13 +129,19 @@ trialRouter.get('/:sessionId', (req: Request, res: Response) => {
     unquantified: JSON.parse(session.unquantified_json || '[]'),
     summary: JSON.parse(session.summary_json || '{}'),
     expiresAt: session.expires_at,
-    claimedAt: session.claimed_at
+    claimedAt: session.claimed_at,
+    createdAt: session.created_at,
+    remainingSeconds,
+    elapsedSeconds: Math.floor(elapsedMs / 1000),
+    maxDurationSeconds: Math.floor(TRIAL_MAX_DURATION_MS / 1000),
+    maxDurationHours: 3,
+    isExpired
   });
 });
 
 // 3. Calculer et ajouter une activité dans la session d'essai
 trialRouter.post('/:sessionId/calculate', (req: Request, res: Response) => {
-  const session = verifyGuestAccess(req, res, req.params.sessionId);
+  const session = verifyGuestAccess(req, res, req.params.sessionId, true);
   if (!session) return;
 
   const factor_id = req.body.factor_id || req.body.factorId;
@@ -212,7 +246,7 @@ trialRouter.post('/:sessionId/calculate', (req: Request, res: Response) => {
 
 // 4. Déclarer une activité non quantifiée (Règle de rigueur : pas de faux zéro)
 trialRouter.post('/:sessionId/unquantified', (req: Request, res: Response) => {
-  const session = verifyGuestAccess(req, res, req.params.sessionId);
+  const session = verifyGuestAccess(req, res, req.params.sessionId, true);
   if (!session) return;
 
   const { category, label, reason, notes } = req.body;

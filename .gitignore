@@ -2,5 +2,8 @@ node_modules/
 *.log
 *.bak
 server/data/backups/
+server/data/*.db-wal
+server/data/*.db-shm
 .DS_Store
 .env
+

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { api, setStoredToken, setStoredOrgId } from '../api.js';
 import { Language, translations } from '../i18n.js';
+import { PricingModal } from '../components/PricingModal.js';
 
 interface LandingViewProps {
   onLoginSuccess: (user: any, orgs: any[]) => void;
@@ -239,6 +240,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [leadLoading, setLeadLoading] = useState(false);
 
+  // Modal Tarifs & Monétisation en MAD
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingBillingCycle, setPricingBillingCycle] = useState<'annual' | 'monthly'>('annual');
+
   // Thème interactif de produit marocain sélectionné
   const [selectedProduct, setSelectedProduct] = useState<MoroccanProductProfile>(MOROCCAN_PRODUCTS[0]);
 
@@ -426,6 +431,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
             )}
             <a href="#demo-accounts" className="hover:text-emerald-800 transition">
               {lang === 'en' ? 'Demos' : 'Démos'}
+            </a>
+            <a href="#tarifs" className="hover:text-emerald-800 transition text-emerald-900 font-extrabold flex items-center space-x-1">
+              <span>{lang === 'en' ? 'Pricing (MAD)' : 'Tarifs (MAD)'}</span>
+              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[9px] font-black">MAD</span>
             </a>
             <a href="#contact" className="hover:text-emerald-800 transition">
               {lang === 'en' ? 'Quote' : 'Devis'}
@@ -1473,6 +1482,343 @@ export const LandingView: React.FC<LandingViewProps> = ({
       </section>
 
 
+      {/* SECTION OFFRES & TARIFS EN DIRHAMS MAROCAINS (MAD) */}
+      <section id="tarifs" className="py-24 bg-white border-b border-slate-200 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
+              <Coins className="w-3.5 h-3.5 text-emerald-700" />
+              <span>{lang === 'en' ? 'Moroccan Dirham (MAD) Official Pricing' : 'Tarification Officielle en Dirhams Marocains (MAD)'}</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              {lang === 'en'
+                ? 'Transparent Pricing Tailored to Moroccan Companies'
+                : 'Des Tarifs Clairs et Accessibles en Dirhams (MAD)'}
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {lang === 'en'
+                ? 'From free 3-hour demo evaluation to heavy industry multisite deployments. Deterministic calculations, ISO 14064-1 compliance, and official EU CBAM declarations.'
+                : 'De l’évaluation démo gratuite de 3 heures aux grands comptes industriels multisites. Tous les calculs sont 100% déterministes et conformes ISO 14064-1 & Déclaration MACF Europe.'}
+            </p>
+
+            {/* Sélecteur de rythme de facturation */}
+            <div className="pt-4 flex justify-center">
+              <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPricingBillingCycle('annual')}
+                  className={`px-4 py-2 rounded-lg transition flex items-center space-x-1.5 ${
+                    pricingBillingCycle === 'annual'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{lang === 'en' ? 'Annual (Best Value)' : 'Annuel (2 mois offerts)'}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500 text-slate-950 font-black">
+                    -20%
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPricingBillingCycle('monthly')}
+                  className={`px-4 py-2 rounded-lg transition ${
+                    pricingBillingCycle === 'monthly'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {lang === 'en' ? 'Monthly' : 'Mensuel'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Grille des 4 cartes d'offres en MAD */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* 1. Découverte */}
+            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    {lang === 'en' ? 'Demo • 3h Window' : 'Démo • 3 Heures'}
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                    {lang === 'en' ? 'Discovery Demo' : 'Pack Découverte'}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {lang === 'en'
+                      ? '3 hours of free access to evaluate the calculation engine and explore sector questions.'
+                      : 'Accès d’évaluation de 3 heures pour tester le moteur déterministe et explorer les formulaires.'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                  <div className="text-3xl font-black text-slate-900 font-mono">0 MAD</div>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {lang === 'en' ? 'Free for 3 hours of testing' : 'Gratuit pendant 3h de test'}
+                  </span>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-700">
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>3 heures d'accès d'évaluation démo</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Simulateur factures ONEE & carburants</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>1 Questionnaire sectoriel guidé</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Rapport PDF avec réserves méthodologiques</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                {onStartTrial && (
+                  <button
+                    onClick={onStartTrial}
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
+                  >
+                    {lang === 'en' ? 'Start Free Trial (3h)' : 'Démarrer l’essai gratuit (3h)'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 2. PME Climat */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                    {lang === 'en' ? 'PME & Public Tenders' : 'PME & Marchés Publics'}
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                    {lang === 'en' ? 'SME Climate Pack' : 'Pack PME Climat'}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {lang === 'en'
+                      ? 'The turnkey solution for Moroccan SMEs to comply with public procurement decree.'
+                      : 'La solution complète pour les PME marocaines soumissionnant aux marchés de l’État.'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-black text-slate-900 font-mono">
+                      {pricingBillingCycle === 'annual' ? '4 900' : '490'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
+                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Soit {pricingBillingCycle === 'annual' ? '5 880' : '588'} MAD TTC (TVA 20%)
+                  </span>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-700">
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span><strong>1 Site</strong> d’exploitation permanent au Maroc</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Scopes 1 & 2 complets + Scope 3 essentiel</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Saisie en Dirhams (ONEE, Gasoil, Gaz)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Bilans PDF certifiés ISO 14064-1 illimités</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Jusqu'à 3 utilisateurs inclus</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setShowPricingModal(true)}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
+                >
+                  {lang === 'en' ? 'Subscribe in MAD' : 'Souscrire au Pack PME'}
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Entreprise & Exportateur MACF (Recommandé) */}
+            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-600 ring-4 ring-emerald-600/10 flex flex-col justify-between space-y-6 shadow-xl relative">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider shadow">
+                {lang === 'en' ? 'Recommended • EU Exporters' : 'Recommandé • Exportateurs UE'}
+              </div>
+
+              <div className="space-y-4 pt-1">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                    {lang === 'en' ? 'Industry & European CBAM' : 'Industrie & Export UE'}
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                    {lang === 'en' ? 'Enterprise & CBAM Pack' : 'Pack Entreprise & MACF'}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {lang === 'en'
+                      ? 'Designed for Moroccan manufacturers exporting to EU and subject to European carbon border tax.'
+                      : 'Conçu pour les industriels marocains exportant vers l’Union Européenne et soumis au MACF.'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200">
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-black text-slate-900 font-mono">
+                      {pricingBillingCycle === 'annual' ? '14 500' : '1 450'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
+                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
+                    Soit {pricingBillingCycle === 'annual' ? '17 400' : '1 740'} MAD TTC (TVA 20%)
+                  </span>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-700">
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span><strong>Jusqu'à 5 sites</strong> de production / usines</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span><strong>Module MACF / CBAM Union Européenne</strong></span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Intensité carbone par tonne produite pour douanes UE</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Directive Climat Bank Al-Maghrib (Crédits Verts)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>10 utilisateurs & Rôles RBAC personnalisés</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Support prioritaire sous 24h</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setShowPricingModal(true)}
+                  className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow-md transition text-center block flex items-center justify-center space-x-2"
+                >
+                  <span>{lang === 'en' ? 'Subscribe to CBAM Pack' : 'Souscrire au Pack MACF'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Grand Compte & Industrie */}
+            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    {lang === 'en' ? 'Corporate & Heavy Industry' : 'Grand Compte & Industrie'}
+                  </span>
+                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                    {lang === 'en' ? 'Corporate Heavy Industry' : 'Pack Grand Compte'}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {lang === 'en'
+                      ? 'For large groups, metallurgy, cement, fertilizers, and multi-facility logistics fleets.'
+                      : 'Pour les grands groupes multisites, sidérurgie, cimenteries, engrais et flottes logistiques.'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-white rounded-2xl border border-slate-200">
+                  <div className="flex items-baseline space-x-1">
+                    <span className="text-3xl font-black text-slate-900 font-mono">
+                      {pricingBillingCycle === 'annual' ? '29 000' : '2 900'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
+                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Soit {pricingBillingCycle === 'annual' ? '34 800' : '3 480'} MAD TTC (TVA 20%)
+                  </span>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-700">
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span><strong>Sites et utilisateurs illimités</strong></span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Portail vérificateur externe (Auditeur ISO 14065)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Connecteurs API ERP & imports massifs</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Trajectoire de décarbonation Cap 2030 sur-mesure</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Accompagnement expert senior & NDA renforcé</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setShowPricingModal(true)}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
+                >
+                  {lang === 'en' ? 'Get Corporate Quote / Proforma' : 'Demander un Bon de Commande'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Bandeau de réassurance commerciale et bancaire */}
+          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="space-y-2 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start space-x-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <h4 className="text-base font-extrabold text-white">
+                  Règlement par Virement Bancaire Marocain ou Carte Bancaire CMI
+                </h4>
+              </div>
+              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                Toutes les offres font l'objet d'un Bon de Commande officiel et d'une facture proforma immédiate avec RIB bancaire marocain (Attijariwafa bank / Banque Populaire). Mention légale de TVA marocaine 20% pour récupération comptable.
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 shrink-0">
+              <button
+                onClick={() => setShowPricingModal(true)}
+                className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
+              >
+                <Zap className="w-4 h-4 text-slate-950" />
+                <span>Ouvrir le Module de Souscription en MAD</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Formulaire de Contact & Devis Officiel */}
       <section id="contact" className="py-24 bg-slate-50 border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -1740,6 +2086,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <span className="mt-2 sm:mt-0 font-mono">Conformité ISO 14064-1 & MACF Régime 2026</span>
         </div>
       </footer>
+
+      {/* Modal Tarifs & Monétisation en MAD */}
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        lang={lang || 'fr'}
+        isPaywallExpired={false}
+        onSubscriptionSuccess={(u, orgs) => onLoginSuccess(u, orgs)}
+      />
     </div>
   );
 };

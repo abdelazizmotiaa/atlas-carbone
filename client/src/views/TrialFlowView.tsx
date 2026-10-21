@@ -18,10 +18,13 @@ import {
   RotateCcw,
   HelpCircle,
   Plus,
-  Receipt
+  Receipt,
+  Clock,
+  Zap
 } from 'lucide-react';
 import { api, setGuestSessionId, setGuestToken, getGuestSessionId, getGuestToken, setStoredToken, setStoredOrgId } from '../api.js';
 import { Language, translations, formatNumber } from '../i18n.js';
+import { PricingModal } from '../components/PricingModal.js';
 
 interface TrialFlowViewProps {
   lang: Language;
@@ -74,6 +77,34 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
+  // Limite Démo 3 Heures & Monétisation
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [isTrialExpired, setIsTrialExpired] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+
+  // Décompte dynamique de la session de 3 heures
+  useEffect(() => {
+    if (remainingSeconds === null || remainingSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setRemainingSeconds(prev => {
+        if (prev === null || prev <= 1) {
+          setIsTrialExpired(true);
+          setShowPricingModal(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [remainingSeconds]);
+
+  const formatCountdown = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+  };
+
   // Charger profils sectoriels et options catalogue
   useEffect(() => {
     api.sectors.getQuestionnaires().then(profs => {
@@ -104,6 +135,12 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
         setActivities(data.activities || []);
         setUnquantified(data.unquantified || []);
         setSummary(data.summary || {});
+        if (data.remainingSeconds !== undefined) {
+          setRemainingSeconds(data.remainingSeconds);
+          if (data.isExpired || data.remainingSeconds <= 0) {
+            setIsTrialExpired(true);
+          }
+        }
       }).catch(() => {
         // Session invalide ou expirée
         setGuestSessionId(null);
@@ -126,6 +163,9 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
       setSessionToken(res.sessionToken);
       setGuestSessionId(res.sessionId);
       setGuestToken(res.sessionToken);
+      if (res.remainingSeconds !== undefined) {
+        setRemainingSeconds(res.remainingSeconds);
+      }
 
       // Sélectionner la première question du secteur
       const prof = sectorProfiles.find(p => p.id === selectedSector);
@@ -139,6 +179,10 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
   };
 
   const handleCalculateActivity = async () => {
+    if (isTrialExpired) {
+      setShowPricingModal(true);
+      return;
+    }
     if (!sessionId || inputQuantity === '' || Number(inputQuantity) <= 0 || !selectedFactorId) {
       setCalcError("Veuillez renseigner une quantité positive et sélectionner une activité.");
       return;
@@ -173,6 +217,10 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
         }
       }
     } catch (err: any) {
+      if (err.message?.includes('PAYMENT_REQUIRED') || err.message?.includes('3 heures')) {
+        setIsTrialExpired(true);
+        setShowPricingModal(true);
+      }
       setCalcError(err.message);
     } finally {
       setCalculating(false);
@@ -231,13 +279,49 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-      {/* Barre supérieure d'avertissement d'essai */}
-      <div className="bg-brand-900 text-white px-4 py-2.5 text-xs flex items-center justify-between border-b border-brand-800 shadow-sm">
-        <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-          <span className="font-semibold">{t.trialClaimBanner}</span>
+      {/* Barre supérieure d'avertissement d'essai avec Compte à rebours 3h & Monétisation en MAD */}
+      <div className="bg-brand-900 text-white px-4 py-2.5 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-brand-800 shadow-sm">
+        <div className="flex items-center space-x-2 flex-wrap">
+          <span
+            className={`w-2.5 h-2.5 rounded-full ${
+              isTrialExpired
+                ? 'bg-rose-500'
+                : remainingSeconds !== null && remainingSeconds < 1800
+                ? 'bg-amber-400 animate-pulse'
+                : 'bg-emerald-400'
+            }`}
+          />
+          <span className="font-semibold">
+            {isTrialExpired ? (
+              <span className="text-amber-300 font-extrabold flex items-center space-x-1.5">
+                <Clock className="w-4 h-4 text-amber-300 inline" />
+                <span>Période d'évaluation démo terminée (Limite de 3 heures atteinte)</span>
+              </span>
+            ) : (
+              <span>{t.trialClaimBanner}</span>
+            )}
+          </span>
+          {!isTrialExpired && remainingSeconds !== null && (
+            <span
+              className={`px-2 py-0.5 rounded font-mono font-black text-xs flex items-center space-x-1 ${
+                remainingSeconds < 1800
+                  ? 'bg-amber-400 text-slate-950 animate-pulse'
+                  : 'bg-brand-800 text-emerald-300 border border-brand-700'
+              }`}
+            >
+              <Clock className="w-3 h-3 inline mr-1" />
+              <span>{formatCountdown(remainingSeconds)} restantes (Max 3h)</span>
+            </span>
+          )}
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            onClick={() => setShowPricingModal(true)}
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-3.5 py-1 rounded-lg transition shadow-sm text-xs flex items-center space-x-1"
+          >
+            <Zap className="w-3.5 h-3.5 text-slate-950" />
+            <span>Débloquer mon Bilan (Offres en MAD)</span>
+          </button>
           {sessionId && (
             <button
               onClick={() => setShowClaimModal(true)}
@@ -257,6 +341,29 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
 
       {/* Contenu principal */}
       <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8 flex-1 space-y-8">
+        {isTrialExpired && (
+          <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in">
+            <div className="flex items-start space-x-3">
+              <Clock className="w-6 h-6 text-amber-700 shrink-0 mt-0.5 animate-pulse" />
+              <div>
+                <h4 className="font-extrabold text-sm text-amber-950">
+                  Votre session de découverte de 3 heures est expirée
+                </h4>
+                <p className="text-xs text-amber-900 mt-0.5">
+                  Vos activités sont conservées. Choisissez une offre en Dirhams Marocains (MAD) pour continuer à calculer et télécharger votre rapport officiel complet.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPricingModal(true)}
+              className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow transition shrink-0 flex items-center space-x-1.5"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Voir les Offres en MAD</span>
+            </button>
+          </div>
+        )}
+
         {!sessionId ? (
           /* Étape 1 : Initialisation de l'essai */
           <div className="max-w-xl mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-md space-y-6">
@@ -895,6 +1002,20 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
           </div>
         </div>
       )}
+
+      {/* Modal Tarifs & Monétisation en MAD */}
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        lang={lang}
+        isPaywallExpired={isTrialExpired}
+        guestSessionId={sessionId}
+        guestCompanyName={companyName}
+        onSubscriptionSuccess={(u, orgs) => {
+          setShowPricingModal(false);
+          onClaimSuccess(u, orgs);
+        }}
+      />
     </div>
   );
 };

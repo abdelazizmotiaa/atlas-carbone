@@ -530,20 +530,88 @@ async function runAcceptanceTests() {
   }
 
   // ============================================================================
-  // Test 16: Sauvegarde et Restauration de la Base de Données
+  // Test 16: Limite démo 3 heures, Paywall HTTP 402 et Monétisation en Dirhams (MAD)
+  // ============================================================================
+  try {
+    // 1. Vérifier le catalogue des offres en Dirhams Marocains
+    const pricingRes = await request('/api/pricing/plans');
+    const hasPlans = pricingRes.status === 200 && pricingRes.data.currency === 'MAD' && pricingRes.data.plans?.length === 4;
+
+    // 2. Créer une session démo via l'API officielle
+    const startExpired = await request('/api/trial/start', {
+      method: 'POST',
+      body: {
+        company_name: 'Usine Exportatrice Test SARL',
+        sector: 'industrie_lourde'
+      }
+    });
+
+    const expSessionId = startExpired.data.sessionId;
+    const expToken = startExpired.data.sessionToken;
+    const fourHoursAgo = new Date(Date.now() - 4 * 3600 * 1000).toISOString();
+
+    const { db } = await import('../src/db/database.js');
+    db.prepare('UPDATE guest_sessions SET created_at = ? WHERE id = ?').run(fourHoursAgo, expSessionId);
+
+    // 3. Tenter un calcul sur cette session expirée (> 3h) -> doit être bloqué avec HTTP 402
+    const blockedRes = await request(`/api/trial/${expSessionId}/calculate`, {
+      method: 'POST',
+      headers: { 'x-guest-token': expToken },
+      body: {
+        label: 'Consommation électrique laminoir',
+        quantity: 10000,
+        unit: 'kWh',
+        factor_id: 'FE-MA-0671'
+      }
+    });
+
+    // 4. Tester la commande / souscription en MAD
+    const checkoutRes = await request('/api/pricing/checkout', {
+      method: 'POST',
+      body: {
+        planId: 'entreprise_macf',
+        companyName: 'Laminoir Marocain SARL',
+        contactName: 'Rachid Idrissi',
+        email: 'r.idrissi@laminoir-maroc.ma',
+        phone: '+212661234567',
+        paymentMethod: 'bank_transfer',
+        billingCycle: 'annual'
+      }
+    });
+
+    const isPaywallWorking = blockedRes.status === 402 && blockedRes.data.code === 'TRIAL_LIMIT_EXCEEDED';
+    const isCheckoutWorking = checkoutRes.status === 201 && checkoutRes.data.totalTTC === 17400 && checkoutRes.data.currency === 'MAD';
+
+    if (hasPlans && isPaywallWorking && isCheckoutWorking) {
+      logTest(16, 'Limite démo 3 heures, Paywall HTTP 402 et Monétisation en Dirhams (MAD)', true,
+        `Catalogue 4 offres MAD OK, blocage session >3h (HTTP 402 TRIAL_LIMIT_EXCEEDED) OK, Bon de commande ${checkoutRes.data.orderNumber} (17 400 MAD TTC) généré avec succès.`);
+    } else {
+      logTest(16, 'Limite démo 3 heures et Monétisation', false,
+        `hasPlans=${hasPlans}, paywallStatus=${blockedRes.status}, checkoutStatus=${checkoutRes.status}`);
+    }
+  } catch (err: any) {
+    logTest(16, 'Limite démo 3 heures et Monétisation', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 17: Sauvegarde et Restauration de la Base de Données
   // ============================================================================
   try {
     const backupRes = createDatabaseBackup('test_suite_run');
-    const restoreRes = restoreDatabase(backupRes.backupPath);
+    const restoreTargetPath = path.join(path.dirname(backupRes.backupPath), `atlas_carbone_restored_verify_${Date.now()}.db`);
+    const restoreRes = restoreDatabase(backupRes.backupPath, restoreTargetPath);
 
     if (restoreRes.integrityOk && restoreRes.stats.emission_factors === 670) {
-      logTest(16, 'Sauvegarde physique WAL et Restauration avec contrôle d’intégrité', true,
+      logTest(17, 'Sauvegarde physique WAL et Restauration avec contrôle d’intégrité', true,
         `Intégrité PRAGMA OK, 670 facteurs et ${restoreRes.stats.organizations} organisations vérifiés après restauration`);
     } else {
-      logTest(16, 'Sauvegarde et Restauration', false, `integrityOk: ${restoreRes.integrityOk}`);
+      logTest(17, 'Sauvegarde et Restauration', false, `integrityOk: ${restoreRes.integrityOk}`);
     }
+
+    // Nettoyage du fichier temporaire de test de restauration
+    if (fs.existsSync(restoreTargetPath)) fs.unlinkSync(restoreTargetPath);
   } catch (err: any) {
-    logTest(16, 'Sauvegarde et Restauration', false, err.message);
+    logTest(17, 'Sauvegarde et Restauration', false, err.message);
   }
 
   // ============================================================================
