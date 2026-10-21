@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer';
 import { db } from '../db/database.js';
 
+const GMAIL_USER = process.env.GMAIL_USER || 'abdelaziz.motiaa@gmail.com';
+const GMAIL_PASS = (process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASS || 'dprfzjhrmbbodttw').replace(/\s+/g, '');
+
 let transporter: nodemailer.Transporter | null = null;
 
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -13,12 +16,12 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       pass: process.env.SMTP_PASS
     }
   });
-} else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+} else if (GMAIL_USER && GMAIL_PASS) {
   transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD
+      user: GMAIL_USER,
+      pass: GMAIL_PASS
     }
   });
 }
@@ -49,7 +52,8 @@ export async function sendNotificationEmail(payload: EmailPayload): Promise<{ su
   if (transporter) {
     try {
       await transporter.sendMail({
-        from: process.env.SMTP_FROM || `"Atlas Carbone" <${process.env.SMTP_USER || process.env.GMAIL_USER || 'contact@mesure-emissions.com'}>`,
+        from: process.env.SMTP_FROM || `"Atlas Carbone" <${GMAIL_USER}>`,
+        replyTo: GMAIL_USER,
         to: payload.to,
         subject: payload.subject,
         html: payload.html
