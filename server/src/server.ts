@@ -2153,34 +2153,164 @@ app.post(['/api/commercial/subscription/upgrade', '/api/organizations/:orgId/com
 });
 
 // -------------------------------------------------------------
-// 10. Site Public & Acquisition Leads
+// 10. Site Public & Acquisition Leads Commerciale B2B
 // -------------------------------------------------------------
 
+const OFFICIAL_CONSULTANT_EMAIL = 'abdelaziz.motiaa@gmail.com';
+const CALENDLY_CONSULTATION_URL = 'https://calendly.com/abdelaziz-motiaa/30min';
+
 app.post('/api/leads', (req, res) => {
-  const { full_name, email, phone, company, sector, message, utm_source } = req.body;
-  if (!full_name || !email || !company) {
-    return res.status(400).json({ error: "Nom, email et entreprise requis." });
+  const {
+    company,
+    full_name,
+    email,
+    phone,
+    sector,
+    city,
+    employee_count,
+    has_existing_bilan,
+    main_objective,
+    message,
+    utm_source
+  } = req.body;
+
+  // Validation stricte des champs obligatoires
+  if (!company || !full_name || !email || !phone || !sector) {
+    return res.status(400).json({
+      error: "Veuillez renseigner les champs obligatoires : entreprise, responsable, email, téléphone et secteur d'activité."
+    });
   }
 
   const id = `lead-${Date.now()}`;
-  db.prepare(`
-    INSERT INTO leads (id, full_name, email, phone, company, sector, message, utm_source, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, full_name, email, phone || '', company, sector || '', message || '', utm_source || 'direct', new Date().toISOString());
+  const createdAt = new Date().toISOString();
+  const safeObjective = main_objective || 'Réaliser un premier bilan carbone';
 
-  // Enregistrer accusé de réception dans dev_notifications
+  db.prepare(`
+    INSERT INTO leads (
+      id, full_name, email, phone, company, sector, city, employee_count,
+      has_existing_bilan, main_objective, message, status, notes, meeting_booked,
+      utm_source, created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Nouveau', '', 0, ?, ?)
+  `).run(
+    id,
+    full_name.trim(),
+    email.trim().toLowerCase(),
+    phone.trim(),
+    company.trim(),
+    sector.trim(),
+    (city || '').trim(),
+    employee_count || 'Non spécifié',
+    has_existing_bilan || 'non',
+    safeObjective,
+    (message || '').trim(),
+    utm_source || 'site_commercial',
+    createdAt
+  );
+
+  // 1. Notification immédiate au consultant Abdelaziz Motiaa
   db.prepare(`
     INSERT INTO dev_notifications (id, recipient_email, subject, template_name, content_html, sent_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
-    `notif-${Date.now()}`, email,
-    'Bienvenue sur Atlas Carbone — Confirmation de votre demande de démonstration',
-    'lead_acknowledgement',
-    `<p>Bonjour ${full_name},</p><p>Nous avons bien reçu votre demande pour votre entreprise <strong>${company}</strong>. Un expert carbone vous contactera sous 24h.</p>`,
-    new Date().toISOString()
+    `notif-admin-${Date.now()}`,
+    OFFICIAL_CONSULTANT_EMAIL,
+    `[Atlas Carbone] Nouvelle demande de qualification B2B — ${company.trim()}`,
+    'lead_admin_alert',
+    `<h2>Nouvelle demande de bilan carbone initial accompagné</h2>
+     <p><strong>Entreprise :</strong> ${company.trim()}</p>
+     <p><strong>Responsable :</strong> ${full_name.trim()}</p>
+     <p><strong>Email :</strong> <a href="mailto:${email.trim()}">${email.trim()}</a></p>
+     <p><strong>Téléphone :</strong> <a href="tel:${phone.trim()}">${phone.trim()}</a> | <a href="https://wa.me/${phone.trim().replace(/[^0-9]/g, '')}">WhatsApp</a></p>
+     <p><strong>Secteur d'activité :</strong> ${sector.trim()}</p>
+     <p><strong>Ville :</strong> ${(city || 'Non renseignée').trim()}</p>
+     <p><strong>Taille entreprise :</strong> ${employee_count || 'Non spécifié'}</p>
+     <p><strong>Bilan existant :</strong> ${has_existing_bilan || 'Non'}</p>
+     <p><strong>Objectif principal :</strong> ${safeObjective}</p>
+     <p><strong>Message :</strong></p>
+     <blockquote style="background:#f1f5f9;padding:10px;border-left:4px solid #047857;">${(message || 'Aucun message spécifique').trim()}</blockquote>
+     <p><em>Enregistré le ${new Date().toLocaleString('fr-FR')}</em></p>`,
+    createdAt
   );
 
-  res.status(201).json({ message: "Demande enregistrée avec succès. Un conseiller vous contactera.", leadId: id });
+  // 2. Accusé de réception professionnel au prospect avec proposition de réservation Calendly
+  db.prepare(`
+    INSERT INTO dev_notifications (id, recipient_email, subject, template_name, content_html, sent_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    `notif-prospect-${Date.now()}`,
+    email.trim().toLowerCase(),
+    `Atlas Carbone — Confirmation de votre demande d'accompagnement`,
+    'lead_prospect_confirmation',
+    `<p>Bonjour ${full_name.trim()},</p>
+     <p>Nous vous remercions pour l'intérêt porté à <strong>Atlas Carbone</strong> et à notre accompagnement pour la réalisation du bilan carbone de votre entreprise <strong>${company.trim()}</strong>.</p>
+     <p>Votre demande a bien été transmise à notre consultant, <strong>Abdelaziz Motiaa</strong> (Doctorant à l'UM6P spécialisé dans la mesure des émissions GES).</p>
+     <div style="background:#f0fdf4;border:1px solid #86efac;padding:16px;border-radius:8px;margin:20px 0;">
+       <h3 style="color:#166534;margin-top:0;">Étape suivante : Réserver votre consultation découverte gratuite (30 min)</h3>
+       <p style="margin-bottom:12px;">Afin de cadrer précisément vos besoins, la consultation initiale de 30 minutes est offerte et sans engagement :</p>
+       <p><a href="${CALENDLY_CONSULTATION_URL}" style="display:inline-block;background:#047857;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;">Réserver mon créneau de 30 minutes</a></p>
+     </div>
+     <p>Si vous préférez un contact direct :</p>
+     <ul>
+       <li>Email : <a href="mailto:${OFFICIAL_CONSULTANT_EMAIL}">${OFFICIAL_CONSULTANT_EMAIL}</a></li>
+       <li>Téléphone / WhatsApp : +212 671 581 167</li>
+     </ul>
+     <p>Bien cordialement,<br><strong>Atlas Carbone</strong> — Abdelaziz Motiaa</p>`,
+    createdAt
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Votre demande a été transmise avec succès. Vous pouvez maintenant réserver votre consultation découverte de 30 minutes.",
+    leadId: id,
+    calendlyUrl: CALENDLY_CONSULTATION_URL
+  });
+});
+
+// Enregistrer la confirmation d'un rendez-vous Calendly pris par un prospect
+app.post('/api/leads/:id/meeting-booked', (req, res) => {
+  const { id } = req.params;
+  try {
+    db.prepare(`UPDATE leads SET meeting_booked = 1, status = 'Rendez-vous' WHERE id = ?`).run(id);
+    res.json({ success: true, message: "Rendez-vous enregistré." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Administration des Leads (CRM Simple)
+app.get('/api/admin/leads', authenticateToken, (req: any, res) => {
+  // Accessible aux administrateurs plateforme ou d'organisation
+  if (!req.user?.is_superadmin) {
+    const isOrgAdmin = db.prepare(`SELECT 1 FROM memberships WHERE user_id = ? AND role IN ('admin', 'carbon_manager', 'commercial') LIMIT 1`).get(req.user.id);
+    if (!isOrgAdmin) {
+      return res.status(403).json({ error: "Accès réservé aux gestionnaires commerciaux et administrateurs." });
+    }
+  }
+
+  const leads = db.prepare(`SELECT * FROM leads ORDER BY created_at DESC`).all();
+  res.json({ leads });
+});
+
+app.patch('/api/admin/leads/:id/status', authenticateToken, (req: any, res) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+  const validStatuses = ['Nouveau', 'Contacté', 'Rendez-vous', 'Devis envoyé', 'Client', 'Clôturé'];
+
+  if (status && !validStatuses.includes(status)) {
+    return res.status(400).json({ error: "Statut non valide. Valeurs autorisées : " + validStatuses.join(', ') });
+  }
+
+  const lead: any = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
+  if (!lead) {
+    return res.status(404).json({ error: "Lead introuvable." });
+  }
+
+  const newStatus = status || lead.status;
+  const newNotes = notes !== undefined ? notes : lead.notes;
+
+  db.prepare(`UPDATE leads SET status = ?, notes = ? WHERE id = ?`).run(newStatus, newNotes, id);
+  res.json({ success: true, message: "Statut du prospect mis à jour.", lead: { ...lead, status: newStatus, notes: newNotes } });
 });
 
 // -------------------------------------------------------------

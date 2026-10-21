@@ -94,7 +94,7 @@ function logTest(num: number, name: string, passed: boolean, details: string, er
 
 async function runAcceptanceTests() {
   console.log('\n================================================================');
-  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (30 TESTS)');
+  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (31 TESTS)');
   console.log('================================================================\n');
 
   let guestSessionId = '';
@@ -1444,6 +1444,80 @@ async function runAcceptanceTests() {
     }
   } catch (err: any) {
     logTest(30, 'Importation Massive, Logs & Révocation', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 31: Qualification B2B, Notifications Email & Pipeline CRM Leads
+  // ============================================================================
+  try {
+    const { db } = await import('../src/db/database.js');
+    const leadEmail = `contact-${Date.now()}@tanger-plastique.ma`;
+    const leadRes = await request('/api/leads', {
+      method: 'POST',
+      body: {
+        company: 'Tanger Plastique Industrie SARL',
+        full_name: 'Youssef El Amrani',
+        email: leadEmail,
+        phone: '+212661234567',
+        sector: 'Industrie exportatrice / Métallurgie / Ciment',
+        city: 'Tanger',
+        employee_count: '51-250',
+        has_existing_bilan: 'non',
+        main_objective: 'Réaliser un premier bilan carbone',
+        message: 'Demande de devis pour notre usine de Tanger Automotive City.'
+      }
+    });
+
+    const isLeadCreated = leadRes.status === 201 &&
+      leadRes.data?.success === true &&
+      leadRes.data?.leadId &&
+      typeof leadRes.data?.calendlyUrl === 'string' &&
+      leadRes.data?.calendlyUrl.includes('calendly.com/abdelaziz-motiaa/30min');
+
+    const createdLeadId = leadRes.data?.leadId;
+
+    // Vérifier la notification enregistrée pour abdelaziz.motiaa@gmail.com
+    const notifs = db.prepare('SELECT * FROM dev_notifications WHERE recipient_email = ?').all('abdelaziz.motiaa@gmail.com') as any[];
+    const hasAdminAlert = notifs.some(n => n.content_html.includes('Tanger Plastique Industrie SARL'));
+
+    // Vérifier l'accusé de réception pour le prospect
+    const prospectNotifs = db.prepare('SELECT * FROM dev_notifications WHERE recipient_email = ?').all(leadEmail) as any[];
+    const hasProspectConf = prospectNotifs.length > 0 && prospectNotifs[0].content_html.includes('30 minutes');
+
+    // Simuler la prise de RDV Calendly
+    const meetingRes = await request(`/api/leads/${createdLeadId}/meeting-booked`, {
+      method: 'POST'
+    });
+    const isMeetingBooked = meetingRes.status === 200 && meetingRes.data?.success === true;
+
+    // Mise à jour du statut par l'administrateur
+    const updateRes = await request(`/api/admin/leads/${createdLeadId}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}` },
+      body: {
+        status: 'Devis envoyé',
+        notes: 'Devis initial 10 000 MAD HT envoyé suite à échange Calendly de 30 min.'
+      }
+    });
+    const isStatusUpdated = updateRes.status === 200 && updateRes.data?.lead?.status === 'Devis envoyé';
+
+    // Consultation de la liste des leads
+    const listRes = await request('/api/admin/leads', {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}` }
+    });
+    const isListWorking = listRes.status === 200 &&
+      Array.isArray(listRes.data?.leads) &&
+      listRes.data?.leads.some((l: any) => l.id === createdLeadId && l.status === 'Devis envoyé');
+
+    if (isLeadCreated && hasAdminAlert && hasProspectConf && isMeetingBooked && isStatusUpdated && isListWorking) {
+      logTest(31, 'Qualification B2B, Notifications Email & Pipeline CRM Leads', true,
+        `Lead qualifié (${createdLeadId}), alertes email consultant & prospect, prise RDV Calendly et mise à jour de statut (Nouveau -> Rendez-vous -> Devis envoyé) validées avec succès.`);
+    } else {
+      logTest(31, 'Qualification B2B, Notifications & Pipeline CRM', false,
+        `leadCreated=${isLeadCreated}, adminAlert=${hasAdminAlert}, prospectConf=${hasProspectConf}, meetingBooked=${isMeetingBooked}, statusUpdated=${isStatusUpdated}, listWorking=${isListWorking}`);
+    }
+  } catch (err: any) {
+    logTest(31, 'Qualification B2B, Notifications & Pipeline CRM', false, err.message);
   }
 
   // ============================================================================

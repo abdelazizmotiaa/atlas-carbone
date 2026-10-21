@@ -1,48 +1,46 @@
 /**
- * Atlas Carbone - Site Public & Vitrine Institutionnelle
- * Design Minimaliste Haut de Gamme, Protection de la Confidentialité des Facteurs
- * et Thèmes Personnalisés pour Produits Marocains (MACF/CBAM, Agriculture, Industrie)
+ * Atlas Carbone — Plateforme de Bilan Carbone & Accompagnement Commercial B2B
+ * Consultation gratuite de 30 minutes • Bilan carbone initial accompagné à partir de 10 000 MAD
+ * Responsable & Consultant : Abdelaziz Motiaa (Doctorant UM6P, spécialisé en quantification GES)
  */
 
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck,
-  TrendingDown,
   Globe2,
-  FileCheck2,
-  Building2,
-  Factory,
-  ArrowRight,
-  Calculator,
+  Calendar,
+  Clock,
   CheckCircle2,
   HelpCircle,
   FileText,
   Mail,
-  Zap,
-  Lock,
-  ChevronRight,
+  Phone,
+  ArrowRight,
+  ShieldCheck,
+  Building2,
+  Factory,
+  ChevronDown,
+  ChevronUp,
   Sparkles,
-  Layers,
-  Wheat,
-  Fish,
-  Car,
-  Package,
-  BadgeCheck,
-  Activity,
-  Receipt,
-  Landmark,
-  Coins,
-  Calendar,
-  Award,
-  Scale,
-  ScrollText,
+  Lock,
   X,
   User,
-  Key
+  Compass,
+  Award,
+  Layers,
+  BarChart3,
+  TrendingDown,
+  Coins,
+  Send,
+  MessageCircle,
+  ExternalLink,
+  Zap,
+  Briefcase
 } from 'lucide-react';
 import { api, setStoredToken, setStoredOrgId } from '../api.js';
-import { Language, translations } from '../i18n.js';
-import { PricingModal } from '../components/PricingModal.js';
+import { Language } from '../i18n.js';
+import { CalendlyModal, OFFICIAL_CALENDLY_URL, OFFICIAL_PHONE, OFFICIAL_EMAIL } from '../components/CalendlyModal.js';
+import { WhatsAppButton } from '../components/WhatsAppButton.js';
+import { CompanyQualificationForm } from '../components/CompanyQualificationForm.js';
 
 interface LandingViewProps {
   onLoginSuccess: (user: any, orgs: any[]) => void;
@@ -53,199 +51,6 @@ interface LandingViewProps {
   onOpenContent?: (tab: 'guides' | 'news') => void;
 }
 
-// Produits marocains phares soumis aux déclarations carbone
-interface MoroccanProductProfile {
-  id: string;
-  nameFr: string;
-  nameEn: string;
-  code: string;
-  sectorFr: string;
-  sectorEn: string;
-  regulatoryDriverFr: string;
-  regulatoryDriverEn: string;
-  productionSiteFr: string;
-  productionSiteEn: string;
-  intensityUnit: string;
-  sampleIntensity: string;
-  scopeBreakdown: { scope1: number; scope2: number; scope3: number };
-  accentColor: string;
-  badgeBg: string;
-  badgeText: string;
-  icon: any;
-  summaryFr: string;
-  summaryEn: string;
-  dossierTypeFr: string;
-  dossierTypeEn: string;
-}
-
-const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
-  {
-    id: 'acier',
-    nameFr: "Barres d'armature béton & Billettes d'acier",
-    nameEn: 'Steel Rebars & Billets',
-    code: 'Code NC 7214 20 00 (CBAM)',
-    sectorFr: 'Sidérurgie & Métallurgie',
-    sectorEn: 'Iron & Steel Metallurgy',
-    regulatoryDriverFr: 'Règlement MACF (UE) 2023/956 — Régime définitif obligatoire',
-    regulatoryDriverEn: 'EU CBAM Regulation 2023/956 — Mandatory Definitive Regime',
-    productionSiteFr: 'Complexe Sidérurgique Selouane / Nador & Jorf Lasfar',
-    productionSiteEn: 'Selouane Steel Complex / Nador & Jorf Lasfar',
-    intensityUnit: 'tCO2e / tonne d’acier',
-    sampleIntensity: '0,975',
-    scopeBreakdown: { scope1: 44, scope2: 39, scope3: 17 },
-    accentColor: 'from-amber-500 to-orange-600',
-    badgeBg: 'bg-amber-100',
-    badgeText: 'text-amber-900 border-amber-300',
-    icon: Factory,
-    summaryFr: 'Calcul simple des consommations des fours électriques, de l’électricité ONEE et traçabilité des matières premières (ferrailles locales) avec dossier officiel prêt pour vos clients en Europe.',
-    summaryEn: 'Simple calculation of electric furnace consumption, ONEE electricity, and local raw materials (recycled scrap) with ready-to-share EU compliance dossiers.',
-    dossierTypeFr: 'Fiche Technique MACF — Déclaration Officielle Export',
-    dossierTypeEn: 'Official CBAM Technical Export Dossier'
-  },
-  {
-    id: 'ciment',
-    nameFr: 'Clinker Portland & Ciment Hydraulique CPJ 45',
-    nameEn: 'Portland Clinker & Hydraulic Cement CPJ 45',
-    code: 'Code NC 2523 10 00 & 2523 29 00 (CBAM)',
-    sectorFr: 'Ciment & Matériaux de Construction',
-    sectorEn: 'Cement & Building Materials',
-    regulatoryDriverFr: 'Règlement MACF (UE) 2023/956 — Audit Spécifique Clinker',
-    regulatoryDriverEn: 'EU CBAM Regulation 2023/956 — Specific Clinker Audit',
-    productionSiteFr: 'Cimenteries de Bouskoura, Settat, Marrakech & Tanger',
-    productionSiteEn: 'Cement Plants of Bouskoura, Settat, Marrakech & Tangier',
-    intensityUnit: 'tCO2e / tonne de clinker',
-    sampleIntensity: '0,812',
-    scopeBreakdown: { scope1: 72, scope2: 18, scope3: 10 },
-    accentColor: 'from-slate-600 to-slate-800',
-    badgeBg: 'bg-slate-200',
-    badgeText: 'text-slate-900 border-slate-300',
-    icon: Building2,
-    summaryFr: 'Mesure directe des émissions de vos fours à ciment, des combustibles et de l’électricité des broyeurs, conforme aux exigences de conformité européenne.',
-    summaryEn: 'Direct measurement of cement kiln emissions, alternative fuels, and mill electricity, compliant with European export standards.',
-    dossierTypeFr: 'Rapport Carbone Procédé Cimentier — Conforme Export UE',
-    dossierTypeEn: 'Cement Process Carbon Report — EU Export Compliant'
-  },
-  {
-    id: 'engrais',
-    nameFr: 'Engrais Phosphatés DAP / MAP & Ammoniac',
-    nameEn: 'Phosphate Fertilizers DAP / MAP & Ammonia',
-    code: 'Code NC 3105 20 & 3102 10 (CBAM)',
-    sectorFr: 'Chimie & Phosphates Marocains',
-    sectorEn: 'Chemistry & Moroccan Phosphates',
-    regulatoryDriverFr: 'Exigences MACF Dérivés d’Ammoniac & Standard Bas-Carbone Export',
-    regulatoryDriverEn: 'CBAM Ammonia Derivatives & Global Low-Carbon Export Standards',
-    productionSiteFr: 'Hub Chimique Jorf Lasfar & Complexe Industriel Safi',
-    productionSiteEn: 'Jorf Lasfar Chemical Hub & Safi Industrial Complex',
-    intensityUnit: 'tCO2e / tonne d’engrais',
-    sampleIntensity: '0,540',
-    scopeBreakdown: { scope1: 52, scope2: 24, scope3: 24 },
-    accentColor: 'from-emerald-600 to-teal-700',
-    badgeBg: 'bg-emerald-100',
-    badgeText: 'text-emerald-900 border-emerald-300',
-    icon: Layers,
-    summaryFr: 'Mesure de l’empreinte carbone par tonne d’engrais : valorisation de l’énergie de vos ateliers et attestation officielle pour vos clients internationaux.',
-    summaryEn: 'Carbon footprint calculation per tonne of fertilizer produced: heat recovery valuation and official compliance certificate for global buyers.',
-    dossierTypeFr: 'Certificat d’Empreinte Carbone Fertilisants & Phosphates',
-    dossierTypeEn: 'Fertilizer & Phosphate Product Carbon Footprint Certificate'
-  },
-  {
-    id: 'agriculture',
-    nameFr: 'Tomates, Agrumes & Fruits Rouges d’Exportation',
-    nameEn: 'Export Tomatoes, Citrus & Soft Fruits',
-    code: 'GlobalG.A.P. & PEF Eco-Score Alimentaire UE',
-    sectorFr: 'Agriculture & Maraîchage Export',
-    sectorEn: 'Agriculture & Export Horticultural Farming',
-    regulatoryDriverFr: 'Cahiers des charges Grande Distribution UE (Carrefour, Tesco, Lidl)',
-    regulatoryDriverEn: 'EU Supermarket Supply Chain Standards (Carrefour, Tesco, Lidl)',
-    productionSiteFr: 'Plaines du Souss-Massa (Chtouka), Berkane, Gharb & Loukkos',
-    productionSiteEn: 'Souss-Massa Plains (Chtouka), Berkane, Gharb & Loukkos',
-    intensityUnit: 'kgCO2e / kg de fruit conditionné',
-    sampleIntensity: '0,385',
-    scopeBreakdown: { scope1: 28, scope2: 22, scope3: 50 },
-    accentColor: 'from-amber-600 to-rose-700',
-    badgeBg: 'bg-rose-100',
-    badgeText: 'text-rose-900 border-rose-300',
-    icon: Wheat,
-    summaryFr: 'Calcul par kilo de fruits récoltés : pompage d’eau (solaire ou ONEE), fertilisation, emballages carton et transport frigorifique vers l’Europe. Répondez aux exigences des supermarchés européens.',
-    summaryEn: 'Calculation per kg of harvested fruit: water pumping (solar or ONEE), fertilization, carton packaging, and refrigerated European freight for supermarket audits.',
-    dossierTypeFr: 'Attestation Empreinte Carbone Récolte & Fret Exportateur',
-    dossierTypeEn: 'Harvest Carbon Footprint & Export Logistics Certificate'
-  },
-  {
-    id: 'peche',
-    nameFr: 'Conserves de Poissons (Sardines & Pélagiques)',
-    nameEn: 'Canned Seafood (Sardines & Small Pelagics)',
-    code: 'Standard RSE Filière Bleue & Grande Distribution',
-    sectorFr: 'Pêche & Industrie Conserverie Halieutique',
-    sectorEn: 'Fisheries & Halieutic Canning Industry',
-    regulatoryDriverFr: 'Audits Carbone Fournisseurs & Traçabilité Décarbonation Mer',
-    regulatoryDriverEn: 'Retailer Scope 3 Audits & Blue Economy Decarbonization',
-    productionSiteFr: 'Ports et Usines d’Agadir, Tan-Tan, Safi & Dakhla',
-    productionSiteEn: 'Ports and Processing Facilities of Agadir, Tan-Tan, Safi & Dakhla',
-    intensityUnit: 'kgCO2e / boîte conserve 125g',
-    sampleIntensity: '0,185',
-    scopeBreakdown: { scope1: 38, scope2: 26, scope3: 36 },
-    accentColor: 'from-blue-600 to-cyan-700',
-    badgeBg: 'bg-blue-100',
-    badgeText: 'text-blue-900 border-blue-300',
-    icon: Fish,
-    summaryFr: 'Calcul par boîte de conserve : carburant des bateaux de pêche, cuisson vapeur en usine, huile végétale et boîtes métalliques. Valorisez la qualité de la conserve marocaine.',
-    summaryEn: 'Calculation per canned unit: fishing vessel fuel, cannery steam, vegetable oil, and tinplate cans to demonstrate Moroccan fishery sustainability.',
-    dossierTypeFr: 'Dossier Filière Bleue — Bilan GES Produit Conserverie',
-    dossierTypeEn: 'Blue Fishery Dossier — Canned Seafood Product GHG Audit'
-  },
-  {
-    id: 'auto_aero',
-    nameFr: 'Faisceaux de Câbles & Pièces Automobiles / Aéro',
-    nameEn: 'Automotive Wiring Harnesses & Aero Parts',
-    code: 'Exigences Constructeurs Scope 3 (Renault, Stellantis)',
-    sectorFr: 'Automobile & Aéronautique Tanger Med / Kénitra',
-    sectorEn: 'Automotive & Aerospace Tanger Med / Kenitra Hubs',
-    regulatoryDriverFr: 'Standards Fournisseurs Rang 1 & Objectifs Net-Zero 2030',
-    regulatoryDriverEn: 'Tier-1 Automotive Standards & OEM Net-Zero 2030 Goals',
-    productionSiteFr: 'Tanger Automotive City, AFZ Kénitra & Midparc Nouaceur',
-    productionSiteEn: 'Tangier Automotive City, Atlantic Free Zone Kenitra & Midparc',
-    intensityUnit: 'kgCO2e / faisceau produit',
-    sampleIntensity: '4,120',
-    scopeBreakdown: { scope1: 15, scope2: 45, scope3: 40 },
-    accentColor: 'from-indigo-600 to-blue-800',
-    badgeBg: 'bg-indigo-100',
-    badgeText: 'text-indigo-900 border-indigo-300',
-    icon: Car,
-    summaryFr: 'Calcul des consommations électriques de vos lignes d’assemblage, de vos machines et des expéditions maritimes vers l’Europe. Conforme aux demandes des constructeurs.',
-    summaryEn: 'Measurement of assembly line electricity, machinery power, and express shipping to Europe. Fully aligned with OEM automaker requirements.',
-    dossierTypeFr: 'Fiche Conformité Fournisseur Automobile & Aéronautique',
-    dossierTypeEn: 'Automotive & Aerospace Supplier Carbon Compliance Sheet'
-  }
-];
-
-export const MOROCCAN_SECTORS = [
-  'Industrie exportatrice / Métallurgie / Ciment / Engrais',
-  'Textile, Confection et Cuir',
-  'Agroalimentaire, Conserverie et Froid',
-  'Transport, Fret et Logistique',
-  'Construction, BTP et Matériaux',
-  'Hôtellerie, Restauration et Tourisme',
-  'Services, Banques, Bureaux et Informatique',
-  'Agriculture, Pêche et Élevage',
-  'Chimie, Plasturgie et Emballage',
-  'Autre secteur d’activité'
-];
-
-export const MOROCCAN_CITIES = [
-  'Casablanca',
-  'Tanger',
-  'Rabat / Salé / Kénitra',
-  'Agadir / Souss-Massa',
-  'Marrakech',
-  'Fès / Meknès',
-  'Oujda / Nador (Oriental)',
-  'El Jadida / Jorf Lasfar',
-  'Safi',
-  'Laâyoune / Dakhla',
-  'Autre ville'
-];
-
 export const LandingView: React.FC<LandingViewProps> = ({
   onLoginSuccess,
   lang = 'fr',
@@ -254,71 +59,51 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onOpenAcademy,
   onOpenContent
 }) => {
-  const t = translations[lang];
+  // Modal Calendly
+  const [showCalendly, setShowCalendly] = useState(false);
+  const [calendlyPrefill, setCalendlyPrefill] = useState<{ name?: string; email?: string; company?: string } | undefined>(undefined);
 
-  // Authentification Directe & Inscription Entreprise
+  // Modal Authentification (Espace Client / Inscription plateforme)
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authTab, setAuthTab] = useState<'register' | 'login'>('register');
-
-  // Formulaire d'inscription directe
-  const [regCompanyName, setRegCompanyName] = useState('');
-  const [regFullName, setRegFullName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regCity, setRegCity] = useState('Casablanca');
-  const [regSector, setRegSector] = useState(MOROCCAN_SECTORS[0]);
-  const [regPhone, setRegPhone] = useState('');
-  const [regLoading, setRegLoading] = useState(false);
-  const [regError, setRegError] = useState<string | null>(null);
-
-  // Formulaire de connexion
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Détection des liens directs d'emailing (#register, #login, #signup)
+  const [regCompanyName, setRegCompanyName] = useState('');
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+
+  // Accordéon FAQ : index de la question ouverte (0 à 7)
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  // Gestion des ancres d'URL (#rendez-vous, #login, #register)
   useEffect(() => {
-    const checkHash = () => {
+    const handleHash = () => {
       const hash = window.location.hash.toLowerCase();
-      if (hash === '#register' || hash === '#signup' || hash === '#inscription') {
-        setAuthTab('register');
-        setShowAuthModal(true);
+      if (hash === '#rendez-vous' || hash === '#calendly') {
+        setShowCalendly(true);
       } else if (hash === '#login' || hash === '#connexion') {
         setAuthTab('login');
         setShowAuthModal(true);
+      } else if (hash === '#register' || hash === '#inscription') {
+        setAuthTab('register');
+        setShowAuthModal(true);
       }
     };
-    checkHash();
-    window.addEventListener('hashchange', checkHash);
-    return () => window.removeEventListener('hashchange', checkHash);
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegLoading(true);
-    setRegError(null);
-    try {
-      const res = await api.auth.register({
-        company_name: regCompanyName,
-        full_name: regFullName,
-        email: regEmail,
-        password: regPassword,
-        city: regCity,
-        sector: regSector,
-        phone: regPhone || undefined
-      });
-      setStoredToken(res.token);
-      if (res.organizations && res.organizations.length > 0) {
-        setStoredOrgId(res.organizations[0].id);
-      }
-      setShowAuthModal(false);
-      onLoginSuccess(res.user, res.organizations);
-    } catch (err: any) {
-      setRegError(err.message || "Erreur lors de la création de votre compte entreprise.");
-    } finally {
-      setRegLoading(false);
-    }
+  const openCalendlyWithPrefill = (prefill?: { name?: string; email?: string; company?: string }) => {
+    setCalendlyPrefill(prefill);
+    setShowCalendly(true);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -337,180 +122,125 @@ export const LandingView: React.FC<LandingViewProps> = ({
       setShowAuthModal(false);
       onLoginSuccess(res.user, res.organizations);
     } catch (err: any) {
-      setLoginError(err.message || "Email ou mot de passe incorrect.");
+      setLoginError(err.message || 'Email ou mot de passe incorrect.');
     } finally {
       setLoginLoading(false);
     }
   };
 
-  // État démonstration 1-clic
-  const [loadingDemo, setLoadingDemo] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Formulaire de contact & devis
-  const [leadName, setLeadName] = useState('');
-  const [leadEmail, setLeadEmail] = useState('');
-  const [leadPhone, setLeadPhone] = useState('');
-  const [leadCompany, setLeadCompany] = useState('');
-  const [leadSector, setLeadSector] = useState('Industrie manufacturière');
-  const [leadMessage, setLeadMessage] = useState('');
-  const [leadSubmitted, setLeadSubmitted] = useState(false);
-  const [leadLoading, setLeadLoading] = useState(false);
-
-  // Modal Tarifs & Monétisation en MAD
-  const [showPricingModal, setShowPricingModal] = useState(false);
-  const [pricingBillingCycle, setPricingBillingCycle] = useState<'annual' | 'monthly'>('annual');
-
-  // Thème interactif de produit marocain sélectionné
-  const [selectedProduct, setSelectedProduct] = useState<MoroccanProductProfile>(MOROCCAN_PRODUCTS[0]);
-
-  // Simulateur Déterministe Confidentiel (AUCUNE valeur de facteur divulguée)
-  const [simMode, setSimMode] = useState<'mad' | 'physical'>('mad');
-  const [simAmountMad, setSimAmountMad] = useState<number>(25000);
-  const [simType, setSimType] = useState<'elec' | 'diesel' | 'gaz' | 'fret'>('elec');
-  const [simQty, setSimQty] = useState<number>(20000);
-  const [simDist, setSimDist] = useState<number>(300);
-
-  // Tarifs officiels marocains de référence (ONEE, Caisse de Compensation, Marché des Carburants)
-  const getDerivedQuantityFromMad = () => {
-    switch (simType) {
-      case 'elec':
-        return simAmountMad / 1.15; // Tarif ONEE Moyenne Tension PME/Industrie (1,15 MAD/kWh HT)
-      case 'diesel':
-        return simAmountMad / 12.50; // Prix moyen national Gasoil à la pompe (12,50 MAD/L TTC)
-      case 'gaz':
-        return (simAmountMad / 50.0) * 12.0; // 50 MAD / bouteille de 12kg subventionnée = 4,17 MAD/kg
-      case 'fret':
-        return simAmountMad / 25.0; // Barème indicatif transport routier marchandises
-      default:
-        return 0;
-    }
-  };
-
-  const calculateQuickSim = () => {
-    const qty = simMode === 'mad' ? getDerivedQuantityFromMad() : simQty;
-    switch (simType) {
-      case 'elec':
-        return (qty * 0.722) / 1000.0;
-      case 'diesel':
-        return (qty * 3.16) / 1000.0;
-      case 'gaz':
-        return (qty * 3.01) / 1000.0;
-      case 'fret':
-        return simMode === 'mad'
-          ? (qty * 200 * 0.10767) / 1000.0
-          : (qty * simDist * 0.10767) / 1000.0;
-      default:
-        return 0;
-    }
-  };
-
-  const handleQuickDemoLogin = async (email: string, pwd: string, orgId: string) => {
-    setLoadingDemo(true);
-    setErrorMsg(null);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegLoading(true);
+    setRegError(null);
     try {
-      const res = await api.auth.login({ email, password: pwd });
+      const res = await api.auth.register({
+        company_name: regCompanyName,
+        full_name: regFullName,
+        email: regEmail,
+        password: regPassword,
+        phone: regPhone || undefined,
+        sector: 'Industrie manufacturière',
+        city: 'Casablanca'
+      });
       setStoredToken(res.token);
-      setStoredOrgId(orgId);
+      if (res.organizations && res.organizations.length > 0) {
+        setStoredOrgId(res.organizations[0].id);
+      }
+      setShowAuthModal(false);
       onLoginSuccess(res.user, res.organizations);
     } catch (err: any) {
-      setErrorMsg(err.message || "Erreur de connexion démo.");
+      setRegError(err.message || "Erreur lors de la création de l'espace entreprise.");
     } finally {
-      setLoadingDemo(false);
+      setRegLoading(false);
     }
   };
 
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLeadLoading(true);
-    try {
-      await api.leads.submit({
-        full_name: leadName,
-        email: leadEmail,
-        phone: leadPhone,
-        company: leadCompany,
-        sector: leadSector,
-        message: leadMessage,
-        utm_source: 'landing_page_form'
-      });
-      setLeadSubmitted(true);
-    } catch (err: any) {
-      alert("Erreur lors de l'envoi de la demande: " + err.message);
-    } finally {
-      setLeadLoading(false);
+  // 8 Questions FAQ obligatoires
+  const faqItemsFr = [
+    {
+      q: "Qu'est-ce qu'un bilan carbone ?",
+      a: "Un bilan carbone (ou inventaire des émissions de gaz à effet de serre) est une démarche méthodique qui permet de quantifier l'ensemble des gaz à effet de serre (GES) émis par les activités d'une entreprise sur une période donnée (généralement un exercice annuel). Les émissions sont exprimées en tonnes d'équivalent CO2 (tCO2e) et réparties par postes : consommations d'énergie (électricité réseau ONEE, carburants fossiles), process industriels, achats de matières et transport."
+    },
+    {
+      q: "Pourquoi réaliser un premier bilan carbone ?",
+      a: "Un premier bilan carbone permet à la direction de disposer d'une vision claire et chiffrée de ses principaux postes d'émissions. Il constitue le point de départ indispensable pour répondre aux demandes de plus en plus fréquentes de vos clients donneurs d'ordre (notamment à l'export), anticiper les réglementations environnementales, identifier des gisements d'économies d'énergie sur vos factures et valoriser votre engagement auprès de vos partenaires financiers."
+    },
+    {
+      q: "Quelles données faut-il fournir ?",
+      a: "Pour un bilan initial, la collecte repose principalement sur des données déjà disponibles dans votre entreprise : vos factures d'électricité (ONEE ou régies délégataires), vos consommations de carburant (gasoil, essence), vos achats de combustibles (gaz butane, propane, fioul lourd), un état de votre flotte de véhicules et les volumes d'activité de vos principaux sites. Nous vous accompagnons pas à pas pour rassembler ces documents simplement sans perturber votre organisation."
+    },
+    {
+      q: "Combien coûte la prestation ?",
+      a: "Notre accompagnement débute à partir de 10 000 MAD. Le tarif définitif est fixé dans un devis personnalisé avant tout démarrage. Il dépend de la taille de votre structure, du nombre de sites d'exploitation, de votre secteur d'activité, de la disponibilité de vos données et du périmètre d'émissions convenu (Scope 1 direct, Scope 2 énergie, et catégories pertinentes du Scope 3). La consultation découverte initiale de 30 minutes est quant à elle 100% gratuite."
+    },
+    {
+      q: "Combien de temps dure l'accompagnement ?",
+      a: "Pour un bilan initial de PME, la mission s'échelonne généralement sur 3 à 6 semaines selon la réactivité de mise à disposition des données. Ce délai comprend la réunion de cadrage, la phase de collecte accompagnée, les calculs et analyses, ainsi que la réunion finale de restitution du rapport de synthèse."
+    },
+    {
+      q: "Faut-il disposer d'un responsable environnement en interne ?",
+      a: "Non, absolument pas. La grande majorité des PME marocaines ne dispose pas de spécialiste climat en interne. Notre accompagnement est conçu pour être accessible aux dirigeants, directeurs administratifs et financiers (DAF), directeurs industriels ou responsables des opérations. Les questions sont formulées en langage courant et contextualisées avec vos factures de terrain."
+    },
+    {
+      q: "La consultation initiale est-elle gratuite ?",
+      a: "Oui, la consultation de cadrage de 30 minutes est entièrement gratuite et sans engagement. Elle permet de faire connaissance, d'évaluer vos besoins, de définir le périmètre adapté et de vous orienter vers la démarche la plus pertinente pour votre entreprise."
+    },
+    {
+      q: "Quelle est la différence entre un bilan carbone et le CBAM (MACF) ?",
+      a: "Le bilan carbone est une démarche globale mesurant les émissions de l'entreprise dans son ensemble (sur ses sites et ses activités). Le CBAM (Mécanisme d'Ajustement Carbone aux Frontières de l'UE / MACF) est une réglementation commerciale européenne spécifique qui cible l'intensité carbone de certains produits exportés vers l'UE (acier, ciment, engrais, aluminium, hydrogène, électricité). Si votre entreprise exporte ces marchandises, nous intégrons les exigences de calcul spécifiques à ces filières."
     }
-  };
+  ];
 
-  // Newsletter
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterConsent, setNewsletterConsent] = useState(false);
-  const [newsletterLoading, setNewsletterLoading] = useState(false);
-  const [newsletterMsg, setNewsletterMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterConsent) {
-      setNewsletterMsg({
-        type: 'error',
-        text: lang === 'en' ? 'Please confirm your consent before subscribing.' : 'Veuillez cocher la case de consentement.'
-      });
-      return;
+  const faqItemsEn = [
+    {
+      q: "What is a corporate carbon footprint?",
+      a: "A carbon footprint (or GHG emissions inventory) is a structured assessment that quantifies the greenhouse gas emissions generated by a company's activities over a given year. Emissions are expressed in metric tonnes of CO2 equivalent (tCO2e) categorized across direct energy combustion, grid electricity (ONEE), materials and freight."
+    },
+    {
+      q: "Why carry out a first carbon footprint?",
+      a: "A first assessment provides executives with transparent, quantified visibility over their emission drivers. It is essential to answer international buyers' procurement requirements, anticipate environmental compliance, identify energy cost-saving opportunities, and reinforce your sustainability credibility with commercial banks."
+    },
+    {
+      q: "What data does my company need to provide?",
+      a: "For an initial scope, data collection relies on readily available records: electricity bills (ONEE), fuel tickets (diesel, gasoline), gas/fuel oil purchases, vehicle fleet count, and production volumes. We provide step-by-step guidance to gather these records without disrupting your daily operations."
+    },
+    {
+      q: "How much does the consulting service cost?",
+      a: "Our supported carbon assessment starts from 10,000 MAD. The final price is stated in a formal quote prior to mission kickoff, depending on your company size, number of sites, sector, data readiness and agreed scopes. The initial 30-minute discovery consultation is 100% free of charge."
+    },
+    {
+      q: "How long does the engagement take?",
+      a: "For an SME initial assessment, the mission typically spans 3 to 6 weeks depending on data availability, including the scoping meeting, guided data collection, calculations, analysis, and final synthesis presentation."
+    },
+    {
+      q: "Do we need an internal sustainability manager?",
+      a: "No. Most Moroccan SMEs do not have a full-time climate officer. Our methodology is tailored for Managing Directors, CFOs, plant managers and operations leads, translating complex standards into everyday operational data."
+    },
+    {
+      q: "Is the initial 30-minute consultation free?",
+      a: "Yes, the 30-minute scoping call is completely free and non-binding. It helps understand your needs, identify your relevant scope and determine whether our support is right for you."
+    },
+    {
+      q: "What is the difference between a carbon footprint and EU CBAM?",
+      a: "A corporate carbon footprint evaluates overall company emissions. The EU Carbon Border Adjustment Mechanism (CBAM) is a specific European trade regulation targeting the embedded carbon intensity per tonne of specific goods exported to the EU (steel, cement, fertilizers, aluminum). If you export these goods, our methodology accommodates CBAM-specific requirements."
     }
-    setNewsletterLoading(true);
-    setNewsletterMsg(null);
-    try {
-      const res = await api.newsletter.subscribe(newsletterEmail, lang || 'fr');
-      setNewsletterMsg({ type: 'success', text: res.message });
-      setNewsletterEmail('');
-      setNewsletterConsent(false);
-    } catch (err: any) {
-      setNewsletterMsg({ type: 'error', text: err.message || "Erreur lors de l'inscription." });
-    } finally {
-      setNewsletterLoading(false);
-    }
-  };
+  ];
 
-  const SelectedIcon = selectedProduct.icon;
+  const faqList = lang === 'en' ? faqItemsEn : faqItemsFr;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-800 selection:text-white">
-      {/* BANDEAU INSTITUTIONNEL SOUVERAIN DU ROYAUME DU MAROC */}
-      <div className="bg-[#022c22] border-b border-emerald-900 text-slate-200 py-2 px-4 text-xs relative overflow-hidden">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 relative z-10">
-          <div className="flex items-center space-x-3">
-            <span className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-900 border border-emerald-700 text-amber-300 font-extrabold text-[11px] shadow-sm">
-              <span>🇲🇦</span>
-              <span className="tracking-widest font-serif">المملكة المغربية</span>
-            </span>
-            <span className="text-white font-extrabold uppercase tracking-wider text-[11px]">
-              ROYAUME DU MAROC
-            </span>
-            <span className="hidden sm:inline text-emerald-500 font-serif">•</span>
-            <span className="hidden sm:inline text-[11px] text-emerald-200 font-medium">
-              Système National de Comptabilité Carbone & Déclaration MACF
-            </span>
-          </div>
-          <div className="flex items-center space-x-3 text-[10px] text-slate-300 font-medium">
-            <span className="flex items-center space-x-1 text-emerald-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Norme ISO 14064-1</span>
-            </span>
-            <span className="text-emerald-700">•</span>
-            <span className="text-amber-300 font-semibold">Règlement MACF (UE) 2023/956</span>
-            <span className="text-emerald-700">•</span>
-            <span className="text-slate-300">Base Carbone Marocaine Homologuée</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Barre de navigation claire et rassurante */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-800 selection:text-white flex flex-col">
+      {/* ------------------------------------------------------------- */}
+      {/* HEADER & NAVIGATION COMMERCIALE */}
+      {/* ------------------------------------------------------------- */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          {/* Logo & Identité */}
           <div
             className="flex items-center space-x-3 cursor-pointer group"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 border border-emerald-700 flex items-center justify-center shadow-md group-hover:scale-105 transition">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-900 to-slate-900 border border-emerald-800 flex items-center justify-center shadow-md group-hover:scale-105 transition">
               <Globe2 className="w-6 h-6 text-amber-300" />
             </div>
             <div>
@@ -518,52 +248,45 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <span className="text-xl font-extrabold tracking-tight text-slate-900">
                   Atlas <span className="text-emerald-800">Carbone</span>
                 </span>
-                <span className="text-xs font-serif text-amber-700 font-bold hidden sm:inline">أطلس كربون</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                  Maroc
+                </span>
               </div>
-              <span className="block text-[10px] text-slate-500 font-medium tracking-wide">
-                {lang === 'en' ? 'Kingdom of Morocco • Sovereign Carbon Accounting Platform' : 'Royaume du Maroc • Plateforme de Comptabilité Carbone'}
+              <span className="block text-[10px] text-slate-500 font-medium">
+                {lang === 'en' ? 'Corporate Carbon Footprint & Consulting' : 'Comptabilité Carbone & Accompagnement Entreprises'}
               </span>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-6 text-xs font-bold uppercase tracking-wider text-slate-700">
-            <a href="#livrables" className="hover:text-emerald-800 transition flex items-center space-x-1 text-slate-800">
-              <span>{lang === 'en' ? 'Official Deliverables' : 'Livrables Officiels'}</span>
+          {/* Navigation Liens Rapides */}
+          <nav className="hidden lg:flex items-center space-x-6 text-xs font-bold text-slate-700 tracking-wide uppercase">
+            <a href="#public-cible" className="hover:text-emerald-800 transition">
+              {lang === 'en' ? 'For Whom?' : 'À qui s’adresse l’offre'}
             </a>
-            <a href="#produits-maroc" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? 'Export Sectors' : 'Filières Export'}
+            <a href="#deroulement" className="hover:text-emerald-800 transition">
+              {lang === 'en' ? '5 Steps' : 'Déroulement'}
             </a>
-            <a href="#simulateur" className="hover:text-emerald-800 transition text-emerald-900 flex items-center space-x-1">
-              <span>{lang === 'en' ? 'MAD Bills Simulator' : 'Factures en MAD'}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+            <a href="#offre" className="hover:text-emerald-800 transition text-emerald-900 font-black flex items-center space-x-1">
+              <span>{lang === 'en' ? 'Offer (10,000 MAD)' : 'Notre Offre (10 000 MAD)'}</span>
             </a>
-            <a href="#calendrier" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? '2026-2030 Roadmap' : 'Cap 2026-2030'}
+            <a href="#pourquoi-nous" className="hover:text-emerald-800 transition">
+              {lang === 'en' ? 'Why Us' : 'Pourquoi nous'}
             </a>
-            {onOpenAcademy && (
-              <button onClick={onOpenAcademy} className="hover:text-emerald-800 transition flex items-center space-x-1 text-slate-700">
-                <span>{lang === 'en' ? 'Academy' : 'Académie'}</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">10 cours</span>
-              </button>
-            )}
-            <a href="#inscription" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? 'Register' : 'Inscription'}
+            <a href="#consultant" className="hover:text-emerald-800 transition">
+              {lang === 'en' ? 'The Consultant' : 'Le Consultant'}
             </a>
-            <a href="#tarifs" className="hover:text-emerald-800 transition text-emerald-900 font-extrabold flex items-center space-x-1">
-              <span>{lang === 'en' ? 'Pricing (MAD)' : 'Tarifs (MAD)'}</span>
-              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[9px] font-black">MAD</span>
-            </a>
-            <a href="#contact" className="hover:text-emerald-800 transition">
-              {lang === 'en' ? 'Quote' : 'Devis'}
+            <a href="#faq" className="hover:text-emerald-800 transition">
+              FAQ
             </a>
           </nav>
 
+          {/* Boutons d'Action & Réservation */}
           <div className="flex items-center space-x-3">
-            {/* Basculeur de langue */}
+            {/* Langue */}
             {onLanguageChange && (
               <button
                 onClick={() => onLanguageChange(lang === 'fr' ? 'en' : 'fr')}
-                className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition flex items-center space-x-1.5 shadow-sm"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center space-x-1 shadow-sm"
                 title={lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
               >
                 <Globe2 className="w-3.5 h-3.5 text-emerald-700" />
@@ -571,1815 +294,907 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </button>
             )}
 
-            {/* Bouton Connexion */}
+            {/* Bouton Espace Client / Connexion */}
             <button
               onClick={() => {
                 setAuthTab('login');
                 setShowAuthModal(true);
               }}
-              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition shadow-sm"
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 transition shadow-sm"
             >
-              <Lock className="w-3.5 h-3.5 inline mr-1 text-slate-500" />
-              <span>{lang === 'en' ? 'Sign In' : 'Se connecter'}</span>
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>{lang === 'en' ? 'Client Sign In' : 'Espace Client'}</span>
             </button>
 
-            {/* Bouton Inscription Entreprise Directe */}
+            {/* Bouton Principal : Réserver Consultation Gratuite (30 min) */}
             <button
-              onClick={() => {
-                setAuthTab('register');
-                setShowAuthModal(true);
-              }}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-700 rounded-xl shadow-sm transition border border-emerald-900"
+              onClick={() => openCalendlyWithPrefill()}
+              className="inline-flex items-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-md transition border border-emerald-900 group"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>{lang === 'en' ? 'Register (Free)' : 'Créer mon compte'}</span>
+              <Calendar className="w-4 h-4 text-amber-300" />
+              <span>{lang === 'en' ? 'Book Free 30 min' : 'Réserver 30 min gratuites'}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-emerald-200 group-hover:translate-x-0.5 transition hidden sm:inline" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section Sobre & Rassurante (Direction 1 : Fond Clair & Vert Cèdre) */}
-      <section className="relative overflow-hidden pt-14 pb-20 border-b border-slate-200 bg-gradient-to-b from-emerald-50/60 via-slate-50/80 to-white">
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 1 — HERO SECTION */}
+      {/* ------------------------------------------------------------- */}
+      <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-200 bg-gradient-to-b from-emerald-50/70 via-slate-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm text-emerald-900 text-xs font-bold tracking-wide">
-                <span className="text-amber-600 font-extrabold text-sm">★</span>
-                <span>Régime Définitif MACF 2026 • Norme ISO 14064-1 • Barème National Maroc</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            
+            {/* Colonne Gauche : Proposition de Valeur */}
+            <div className="lg:col-span-7 space-y-6 text-left">
+              
+              {/* Badge d'Accroche Tarifaire & Cadrage */}
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-300 shadow-sm text-emerald-950 text-xs font-bold">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>
+                  {lang === 'en'
+                    ? 'Supported initial assessment from 10,000 MAD • Free 30-min call'
+                    : 'Accompagnement à partir de 10 000 MAD • Consultation découverte de 30 min offerte'}
+                </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.14]">
-                La comptabilité carbone <span className="text-emerald-800">simple et certifiée</span> des entreprises marocaines.
+              {/* Titre Principal */}
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.18]">
+                {lang === 'en' ? (
+                  <>Your first corporate carbon assessment, <span className="text-emerald-800">simply and with expert support</span>.</>
+                ) : (
+                  <>Votre premier bilan carbone, <span className="text-emerald-800">simplement et avec un accompagnement expert</span>.</>
+                )}
               </h1>
 
+              {/* Sous-titre */}
               <p className="text-base sm:text-lg text-slate-600 max-w-2xl leading-relaxed">
-                De vos factures d'électricité ONEE et reçus de carburant jusqu'aux dossiers d'audit pour l'Union Européenne (MACF) et vos banques marocaines : mesurez vos émissions réelles avec le barème national officiel, sans formules compliquées.
+                {lang === 'en'
+                  ? 'Atlas Carbone supports Moroccan companies in estimating and quantifying their greenhouse gas emissions through a structured approach tailored to their operational activities.'
+                  : 'Atlas Carbone accompagne les entreprises marocaines dans l’estimation et la quantification de leurs émissions de gaz à effet de serre, grâce à une approche structurée et adaptée à leurs activités.'}
               </p>
 
+              {/* Prix et gratuité clairement affichés */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    {lang === 'en' ? 'Starting Price' : 'Tarif de départ prestation'}
+                  </span>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-2xl sm:text-3xl font-black text-emerald-900">10 000 MAD</span>
+                    <span className="text-xs text-slate-500 font-medium">HT (sur devis personnalisé)</span>
+                  </div>
+                </div>
+                <div className="sm:border-l sm:border-slate-200 sm:pl-4 text-xs text-slate-600">
+                  <div className="flex items-center space-x-1.5 text-emerald-800 font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{lang === 'en' ? 'Initial 30-min call: 100% Free' : 'Échange initial 30 min : 100% Gratuit'}</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    {lang === 'en' ? 'No advance payment required' : 'Aucun paiement avant validation du devis'}
+                  </span>
+                </div>
+              </div>
+
+              {/* CTAs d'action */}
               <div className="pt-2 flex flex-wrap items-center gap-4">
                 <button
-                  onClick={() => {
-                    setAuthTab('register');
-                    setShowAuthModal(true);
-                  }}
-                  className="inline-flex items-center space-x-2.5 px-7 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition group border border-emerald-900 text-sm"
+                  onClick={() => openCalendlyWithPrefill()}
+                  className="inline-flex items-center space-x-2.5 px-7 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md hover:shadow-lg transition group border border-emerald-900 text-sm"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>{lang === 'en' ? 'Start My Carbon Accounting (Free)' : 'Démarrer mon Bilan Carbone (Gratuit)'}</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition text-emerald-200" />
+                  <Calendar className="w-4 h-4 text-amber-300" />
+                  <span>{lang === 'en' ? 'Book 30 min free consultation' : 'Réserver 30 minutes d’échange gratuit'}</span>
+                  <ArrowRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-1 transition" />
                 </button>
-                <button
-                  onClick={() => {
-                    setAuthTab('login');
-                    setShowAuthModal(true);
-                  }}
-                  className="inline-flex items-center space-x-2 px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold rounded-xl shadow-sm transition text-sm"
-                >
-                  <Lock className="w-4 h-4 text-emerald-800" />
-                  <span>{lang === 'en' ? 'Sign In to My Space' : 'Se connecter'}</span>
-                </button>
+
                 <a
-                  href="#livrables"
-                  className="inline-flex items-center space-x-2 px-4 py-3.5 text-slate-600 hover:text-slate-900 font-semibold transition text-sm"
+                  href="#qualification-form"
+                  className="inline-flex items-center space-x-2 px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold rounded-xl shadow-sm transition text-sm"
                 >
                   <FileText className="w-4 h-4 text-emerald-800" />
-                  <span>{lang === 'en' ? 'View Deliverables' : 'Livrables officiels'}</span>
+                  <span>{lang === 'en' ? 'Describe My Company' : 'Décrire mon entreprise'}</span>
+                </a>
+
+                <a
+                  href="#deroulement"
+                  className="inline-flex items-center space-x-1.5 px-4 py-3.5 text-slate-600 hover:text-slate-900 font-semibold text-sm transition"
+                >
+                  <span>{lang === 'en' ? 'Discover our process' : 'Découvrir notre accompagnement'}</span>
+                  <span>↓</span>
                 </a>
               </div>
 
-              {/* 4 Piliers Clairs pour Dirigeants Marocains */}
-              <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-200 text-xs">
-                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                  <span className="font-extrabold text-emerald-800 block text-lg font-mono">670+</span>
-                  <span className="text-[11px] text-slate-600 mt-0.5 block font-medium">Postes & Barèmes Nationaux</span>
+              {/* Éléments de réassurance factuels */}
+              <div className="pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Approche ISO 14064-1 & GHG Protocol</span>
                 </div>
-                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                  <span className="font-extrabold text-amber-700 block text-lg font-mono">100%</span>
-                  <span className="text-[11px] text-slate-600 mt-0.5 block font-medium">Calcul Serveur Sécurisé</span>
+                <div className="flex items-center space-x-2">
+                  <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Adapté aux réalités marocaines</span>
                 </div>
-                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                  <span className="font-extrabold text-emerald-800 block text-lg font-mono">0 MAD</span>
-                  <span className="text-[11px] text-slate-600 mt-0.5 block font-medium">Essai Gratuit PME Maroc</span>
-                </div>
-                <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-                  <span className="font-extrabold text-amber-700 block text-lg font-mono">2026</span>
-                  <span className="text-[11px] text-slate-600 mt-0.5 block font-medium">Régime MACF Conforme</span>
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>Contact direct avec le consultant</span>
                 </div>
               </div>
+
             </div>
 
-            {/* Carte de Synthèse Exécutive Sobre (Fond Blanc & Contraste Franc) */}
+            {/* Colonne Droite : Carte Visuelle Sobre & Crédible */}
             <div className="lg:col-span-5">
-              <div className="bg-white rounded-3xl p-7 shadow-xl space-y-6 border border-slate-200 text-slate-900">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-7 space-y-5 text-left relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <div className="flex items-center space-x-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                    <span className="text-sm font-bold text-slate-900 tracking-wide">Exemple d'Inventaire Clôturé</span>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Exemple de synthèse
+                    </span>
+                    <h3 className="font-extrabold text-slate-900 text-base">
+                      Bilan Carbone Initial Accompagné
+                    </h3>
                   </div>
-                  <span className="px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Conforme ISO 14064
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs">
+                    Périmètre Cadré
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[11px] text-slate-500 font-medium block">Total Émissions Brutes</span>
-                    <div className="text-2xl font-black text-slate-900 mt-1">
-                      1 245,80 <span className="text-xs font-normal text-slate-500">tCO2e</span>
+                {/* Blocs d'activité concrets (factures ONEE, carburant, fluides) */}
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
+                        ⚡
+                      </div>
+                      <div>
+                        <span className="block text-xs font-bold text-slate-800">Électricité Réseau (Factures ONEE)</span>
+                        <span className="block text-[11px] text-slate-500">Mix moyen national documenté</span>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-emerald-800 font-bold mt-1 block">Calcul vérifiable et traçable</span>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <span className="text-[11px] text-slate-500 font-medium block">Intensité par Unité</span>
-                    <div className="text-2xl font-black text-slate-900 mt-1">
-                      0,42 <span className="text-xs font-normal text-slate-500">tCO2e / t</span>
-                    </div>
-                    <span className="text-[10px] text-slate-600 mt-1 block">Prêt pour audit client</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between items-center text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                    <span>Répartition des émissions</span>
-                    <span>Structure par Scope</span>
+                    <span className="text-xs font-mono font-bold text-slate-700">Scope 2</span>
                   </div>
 
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                        <span>Énergies directes (Gasoil camions, chaudières)</span>
-                        <span className="font-mono font-bold text-amber-800">23% • 285,4 t</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs">
+                        ⛽
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className="bg-amber-600 h-2 rounded-full" style={{ width: '23%' }}></div>
+                      <div>
+                        <span className="block text-xs font-bold text-slate-800">Carburants & Combustibles</span>
+                        <span className="block text-[11px] text-slate-500">Gasoil, essence, gaz de process</span>
                       </div>
                     </div>
+                    <span className="text-xs font-mono font-bold text-slate-700">Scope 1</span>
+                  </div>
 
-                    <div>
-                      <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                        <span>Électricité réseau ONEE (Usines, ateliers, bureaux)</span>
-                        <span className="font-mono font-bold text-emerald-800">36% • 449,8 t</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-xs">
+                        📦
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className="bg-emerald-700 h-2 rounded-full" style={{ width: '36%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                        <span>Transport & Achats (Livraisons, matières premières)</span>
-                        <span className="font-mono font-bold text-teal-800">41% • 510,6 t</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className="bg-teal-600 h-2 rounded-full" style={{ width: '41%' }}></div>
+                      <div>
+                        <span className="block text-xs font-bold text-slate-800">Postes prioritaires convenus</span>
+                        <span className="block text-[11px] text-slate-500">Intrants clés & transport amont</span>
                       </div>
                     </div>
+                    <span className="text-xs font-mono font-bold text-slate-700">Scope 3</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center space-x-2.5 text-xs text-emerald-950">
-                  <BadgeCheck className="w-4 h-4 text-emerald-800 shrink-0" />
-                  <span>🔒 Facteurs protégés : calculs exécutés côté serveur pour garantir l'acceptation de vos dossiers par les auditeurs.</span>
+                {/* Livrables inclus */}
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="block text-[11px] font-bold text-slate-700 mb-2">
+                    Livrables remis à l'issue de la mission :
+                  </span>
+                  <ul className="space-y-1.5 text-xs text-slate-600">
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Rapport de synthèse des émissions (tCO2e)</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Classeur méthodologique documenté</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Réunion de restitution et recommandations</span>
+                    </li>
+                  </ul>
                 </div>
+
+                <button
+                  onClick={() => openCalendlyWithPrefill()}
+                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Réserver mon échange de cadrage (30 min)</span>
+                </button>
               </div>
             </div>
+
           </div>
         </div>
       </section>
 
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 2 — À QUI S'ADRESSE NOTRE OFFRE ? */}
+      {/* ------------------------------------------------------------- */}
+      <section id="public-cible" className="py-20 border-b border-slate-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold uppercase tracking-wider inline-block">
+            {lang === 'en' ? 'Target Audience' : 'Bénéficiaires'}
+          </span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+            {lang === 'en' ? 'Who is this support designed for?' : 'À qui s’adresse notre accompagnement ?'}
+          </h2>
+          <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+            {lang === 'en'
+              ? 'Our support is tailored to Moroccan businesses seeking clarity, pragmatism and scientific rigor without unnecessary complexity.'
+              : 'Notre offre s’adresse aux entreprises marocaines qui recherchent de la clarté, du pragmatisme et de la rigueur scientifique, sans jargon superflu.'}
+          </p>
 
-      {/* SECTION COMMENT ÇA MARCHE : SIMPLE, RAPIDE, SANS JARGON */}
-      <section className="py-16 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          <div className="text-center max-w-3xl mx-auto space-y-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-800">
-              {lang === 'en' ? 'Simple 3-Step Process' : 'Simple, Accessible & Sans Jargon'}
+          <div className="pt-10 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 text-left">
+            {/* 1. PME Marocaines */}
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-700 transition flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-105 transition">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  PME marocaines
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Structures souhaitant mesurer leurs émissions avec leurs données courantes (factures ONEE, carburants) sans mobiliser une équipe dédiée.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800">
+                Approche pragmatique →
+              </span>
+            </div>
+
+            {/* 2. Entreprises Industrielles */}
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-700 transition flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center group-hover:scale-105 transition">
+                  <Factory className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Entreprises industrielles
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Unités de production, agroalimentaire, métallurgie ou textile ayant des consommations thermiques et électriques significatives à quantifier.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800">
+                Périmètre usine & énergie →
+              </span>
+            </div>
+
+            {/* 3. Entreprises Exportatrices */}
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-700 transition flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center group-hover:scale-105 transition">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Entreprises exportatrices
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Exportateurs confrontés aux attentes de donneurs d'ordre européens ou internationaux exigeant des données d'émissions traçables.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800">
+                Conformité donneurs d'ordre →
+              </span>
+            </div>
+
+            {/* 4. Entreprises souhaitant réaliser leur 1er bilan */}
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-700 transition flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center group-hover:scale-105 transition">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Premier bilan carbone
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Dirigeants n'ayant jamais réalisé d'exercice carbone et cherchant un accompagnement rassurant, pédagogique et étape par étape.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800">
+                Guidage sans jargon →
+              </span>
+            </div>
+
+            {/* 5. Entreprises souhaitant mieux comprendre leurs émissions */}
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-700 transition flex flex-col justify-between space-y-4 group">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center group-hover:scale-105 transition">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Compréhension des GES
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Organisations souhaitant identifier précisément leurs postes les plus émetteurs afin de cibler de réelles économies d'énergie et de coûts.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-800">
+                Priorisation des gains →
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 pt-4 italic">
+            * Note de transparence : toutes les entreprises ne sont pas soumises au mécanisme MACF/CBAM. Le périmètre de travail est déterminé en fonction de vos enjeux réels.
+          </p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 3 — COMMENT SE DÉROULE L'ACCOMPAGNEMENT ? (5 ÉTAPES) */}
+      {/* ------------------------------------------------------------- */}
+      <section id="deroulement" className="py-20 border-b border-slate-200 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center space-y-3">
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider inline-block">
+              {lang === 'en' ? 'Structured Methodology' : 'Parcours en 5 étapes'}
             </span>
-            <h2 className="text-3xl font-extrabold text-slate-900">
-              {lang === 'en' ? 'How Atlas Carbone Works for Your Company' : 'Comment ça marche pour votre entreprise ?'}
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+              {lang === 'en' ? 'How the consulting mission unfolds' : 'Comment se déroule l’accompagnement ?'}
             </h2>
-            <p className="text-sm text-slate-600">
-              {lang === 'en'
-                ? 'No climate science degree needed. Use your day-to-day utility bills and let our certified engine do the heavy lifting.'
-                : 'Aucune expertise climatique requise. Utilisez vos factures du quotidien et laissez notre moteur certifié calculer vos résultats.'}
+            <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+              Un cheminement clair et balisé pour vous faire gagner du temps et garantir la fiabilité méthodologique de votre bilan carbone.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-700/50 hover:shadow-md transition group space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+          {/* Grille des 5 étapes */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+            {/* Étape 1 */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 relative">
+              <div className="w-8 h-8 rounded-full bg-emerald-800 text-white font-extrabold text-xs flex items-center justify-center">
                 1
               </div>
-              <h3 className="text-base font-bold text-slate-900">
-                {lang === 'en' ? '1. Enter Your Routine Bills' : '1. Saisissez vos factures habituelles'}
-              </h3>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Gratuit • 30 min</span>
+                <h3 className="font-extrabold text-slate-900 text-sm">Échange initial gratuit</h3>
+              </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                {lang === 'en'
-                  ? 'Input electricity in kWh or Dirhams (ONEE bills), fleet diesel in liters or receipts, gas bottles, or freight weight. Enter values directly without manual conversions.'
-                  : 'Renseignez vos consommations en unités physiques ou directement en Dirhams (factures ONEE, reçus de gasoil camions, bonbonnes de gaz, fret). Notre assistant calcule automatiquement les équivalents.'}
+                Consultation de 30 minutes avec Abdelaziz Motiaa pour comprendre votre activité, vos objectifs et vos données disponibles.
               </p>
             </div>
 
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-700/50 hover:shadow-md transition group space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+            {/* Étape 2 */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 relative">
+              <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center">
                 2
               </div>
-              <h3 className="text-base font-bold text-slate-900">
-                {lang === 'en' ? '2. Automatic Certified Calculation' : '2. Calcul automatique certifié'}
-              </h3>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cadrage sur-mesure</span>
+                <h3 className="font-extrabold text-slate-900 text-sm">Définition du périmètre & devis</h3>
+              </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                {lang === 'en'
-                  ? 'Atlas Carbone securely applies official Moroccan emission factors on our servers. You get precision calculations without worrying about formulas or coefficients.'
-                  : 'Atlas Carbone applique le barème officiel marocain en toute sécurité sur nos serveurs. Vos données d’émissions sont calculées avec précision, sans formules compliquées.'}
+                Définition formelle des scopes retenus, des livrables attendus et envoi d’un devis transparent (à partir de 10 000 MAD).
               </p>
             </div>
 
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-700/50 hover:shadow-md transition group space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+            {/* Étape 3 */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 relative">
+              <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center">
                 3
               </div>
-              <h3 className="text-base font-bold text-slate-900">
-                {lang === 'en' ? '3. Official Ready-to-Send Reports' : '3. Rapports officiels prêts à l’emploi'}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Accompagnement</span>
+                <h3 className="font-extrabold text-slate-900 text-sm">Collecte des données</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Transmission d'une grille de collecte simple et guidage pas à pas pour rassembler vos factures ONEE, carburants et intrants.
+              </p>
+            </div>
+
+            {/* Étape 4 */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 relative">
+              <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center">
+                4
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rigueur scientifique</span>
+                <h3 className="font-extrabold text-slate-900 text-sm">Calcul & analyse des émissions</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Application déterministe des facteurs d'émission appropriés, calcul des incertitudes et identification des principaux postes émetteurs.
+              </p>
+            </div>
+
+            {/* Étape 5 */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 relative">
+              <div className="w-8 h-8 rounded-full bg-emerald-800 text-white font-extrabold text-xs flex items-center justify-center">
+                5
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Restitution</span>
+                <h3 className="font-extrabold text-slate-900 text-sm">Résultats & Recommandations</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Réunion de présentation des résultats, remise du rapport officiel de synthèse et conseils prioritaires de réduction.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center pt-2">
+            <button
+              onClick={() => openCalendlyWithPrefill()}
+              className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md transition"
+            >
+              <Calendar className="w-4 h-4 text-amber-300" />
+              <span>Démarrer par l'échange initial gratuit (Étape 1)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 4 — NOTRE OFFRE COMMERCIALE */}
+      {/* ------------------------------------------------------------- */}
+      <section id="offre" className="py-20 border-b border-slate-200 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-3">
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider inline-block">
+              {lang === 'en' ? 'Transparent Pricing' : 'Tarif & Prestation'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+              {lang === 'en' ? 'Our Consulting Engagement' : 'Notre offre d’accompagnement'}
+            </h2>
+            <p className="text-slate-600 text-sm max-w-xl mx-auto">
+              Une formule claire et adaptée aux entreprises souhaitant réaliser une première évaluation structurée de leurs émissions GES.
+            </p>
+          </div>
+
+          {/* Carte Commerciale Premium */}
+          <div className="bg-gradient-to-b from-white to-slate-50 rounded-3xl border-2 border-emerald-800/30 shadow-2xl p-8 sm:p-10 space-y-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-emerald-800 text-white text-[11px] font-black uppercase tracking-wider rounded-bl-2xl">
+              Offre Recommandée
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
+                Bilan carbone initial accompagné
+              </h3>
+              <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+                Une première évaluation structurée des émissions de gaz à effet de serre de votre entreprise, réalisée avec un accompagnement méthodologique et adaptée à votre activité.
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row sm:items-baseline gap-2">
+                <span className="text-4xl sm:text-5xl font-black text-emerald-900">À partir de 10 000 MAD</span>
+                <span className="text-xs text-slate-500 font-medium">HT • Fixé sur devis personnalisé</span>
+              </div>
+            </div>
+
+            {/* Prestations Incluses sous réserve du périmètre convenu */}
+            <div className="pt-4 border-t border-slate-200 space-y-4">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Prestations possibles (sous réserve du périmètre convenu dans le devis) :
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-slate-700">
+                {[
+                  'Réunion de cadrage initiale',
+                  'Identification des sources d’émissions pertinentes',
+                  'Accompagnement à la collecte des données d’activité',
+                  'Sélection documentée des facteurs d’émission',
+                  'Calcul des émissions sur le périmètre défini',
+                  'Analyse des principaux postes d’émissions',
+                  'Rapport de synthèse clair et professionnel',
+                  'Réunion de restitution et d’échange avec le consultant'
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <span className="font-medium text-slate-800">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mention Obligatoire de Transparence */}
+            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1">
+              <span className="font-bold block">Notice méthodologique importante :</span>
+              <p className="leading-relaxed">
+                Le périmètre, les livrables, le délai et le tarif définitif sont précisés dans un devis personnalisé. Le tarif de 10 000 MAD constitue le tarif de départ pour un périmètre initial convenu et ne comprend pas automatiquement l’ensemble exhaustif des Scopes 1, 2 et 3 ni une certification tierce partie indépendante.
+              </p>
+            </div>
+
+            {/* Boutons d'Action */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+              <button
+                onClick={() => openCalendlyWithPrefill()}
+                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
+              >
+                <Calendar className="w-4 h-4 text-amber-300" />
+                <span>Discuter de mon bilan carbone (30 min offertes)</span>
+              </button>
+
+              <a
+                href="#qualification-form"
+                className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm text-center shadow-sm transition"
+              >
+                Demander un devis en décrivant mon entreprise
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 5 — POURQUOI NOUS CHOISIR ? */}
+      {/* ------------------------------------------------------------- */}
+      <section id="pourquoi-nous" className="py-20 border-b border-slate-200 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center space-y-3">
+            <span className="px-3 py-1 rounded-full bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider inline-block">
+              {lang === 'en' ? 'Verifiable Rationale' : 'Garanties & Engagements'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+              {lang === 'en' ? 'Why choose Atlas Carbone?' : 'Pourquoi nous choisir ?'}
+            </h2>
+            <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+              Des arguments vérifiables, concrets et sans fausses promesses institutionnelles.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Accompagnement scientifique */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                🔬
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Accompagnement scientifique
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                {lang === 'en'
-                  ? 'Download bilingual PDF audit dossiers ready for European clients, customs (CBAM), and Moroccan banks. Return anytime to update with new monthly invoices.'
-                  : 'Téléchargez vos attestations officielles et vos bilans bilingues (FR/EN) prêts pour vos clients européens (MACF), vos banques et vos auditeurs. Revenez à chaque nouvelle facture !'}
+                Une expertise directement issue de travaux de recherche doctorale appliquée à la mesure, la modélisation et la quantification rigoureuse des émissions de gaz à effet de serre.
+              </p>
+            </div>
+
+            {/* 2. Approche adaptée aux entreprises marocaines */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                🇲🇦
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Approche adaptée au Maroc
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Prise en compte fine du mix électrique national (factures ONEE), des carburants commercialisés au Maroc et des spécificités opérationnelles des PME du Royaume.
+              </p>
+            </div>
+
+            {/* 3. Méthodologie structurée */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
+                📐
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Méthodologie structurée
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Alignement méthodique sur les standards reconnus (ISO 14064-1:2018 et GHG Protocol), garantissant un inventaire exploitable auprès de vos banques et clients.
+              </p>
+            </div>
+
+            {/* 4. Calculs transparents et documentés */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                📊
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Calculs transparents & traçables
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Aucune formule opaque ou boîte noire. Chaque facteur d'émission utilisé est sourcé, documenté et expliqué dans votre classeur de synthèse.
+              </p>
+            </div>
+
+            {/* 5. Explications accessibles aux non-spécialistes */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                💡
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Pédagogie & Clarté
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Des explications simples, en langage professionnel courant, adaptées aux dirigeants et responsables financiers sans formation environnementale préalable.
+              </p>
+            </div>
+
+            {/* 6. Contact direct avec le consultant */}
+            <div className="p-7 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold">
+                🤝
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                Contact direct avec le consultant
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Un interlocuteur unique et dédié (Abdelaziz Motiaa), disponible directement par téléphone, visioconférence et WhatsApp tout au long de la mission.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION DES 3 LIVRABLES OFFICIELS POUR L'ENTREPRISE MAROCAINE */}
-      <section id="livrables" className="py-20 bg-slate-50 border-b border-slate-200 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
-              <span>🇲🇦</span>
-              <span>Livrables Stratégiques à Valeur Probante</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-              {lang === 'en'
-                ? '3 Official Deliverables Moroccan Companies Truly Need'
-                : 'Les 3 Livrables Officiels Indispensables à Votre Entreprise'}
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 6 — À PROPOS DU CONSULTANT */}
+      {/* ------------------------------------------------------------- */}
+      <section id="consultant" className="py-20 border-b border-slate-200 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-3">
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider inline-block">
+              {lang === 'en' ? 'Scientific Lead' : 'Le Consultant'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+              À propos d’Abdelaziz Motiaa
             </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {lang === 'en'
-                ? 'Why do Moroccan executives choose Atlas Carbone from start to finish? Because every invoice and activity entered produces certified documents accepted by European customs, Moroccan banks, and auditor networks.'
-                : 'Pourquoi les chefs d’entreprise marocains utilisent Atlas Carbone jusqu’au bout ? Parce que chaque facture saisie alimente directement des dossiers réglementaires opposables aux banques, à l’Union Européenne et aux grands donneurs d’ordre.'}
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Livrable 1 : Bilan ISO 14064-1 & Banques Marocaines */}
-            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:border-emerald-700 hover:shadow-md flex flex-col justify-between space-y-6 transition">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center shadow-sm">
-                    <Landmark className="w-6 h-6" />
-                  </div>
-                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Banques & Crédits Verts
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">
-                    1. Rapport BEGES & Audit ISO 14064-1
-                  </h3>
-                  <p className="text-xs font-semibold text-emerald-800 mt-1 uppercase tracking-wide">
-                    Bank Al-Maghrib & Ligne Tamwilcom Croissance Verte
-                  </p>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {lang === 'en'
-                    ? 'A comprehensive greenhouse gas inventory covering Scopes 1, 2, and 3. Required by Moroccan commercial banks under Bank Al-Maghrib ESG climate directives and unlocks Tamwilcom green subsidies.'
-                    : 'Le bilan complet de vos émissions directes et indirectes (Scopes 1, 2, 3). Requis par les banques marocaines (Attijariwafa, BCP, BOA, CIH) pour les crédits verts et condition d’éligibilité aux subventions d’investissement Tamwilcom Tatwir (jusqu’à 30% d’aide).'}
-                </p>
-
-                <div className="pt-2 space-y-2 border-t border-slate-100 text-[11px] text-slate-700">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span>Conforme aux critères ESG de Bank Al-Maghrib</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span>Atout décisif pour les Marchés Publics (Décret 2-22-431)</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span>Rapport immuable scellé avec empreinte SHA-256</span>
-                  </div>
-                </div>
+          <div className="bg-slate-50 rounded-3xl border border-slate-200 p-8 sm:p-10 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              {/* Avatar sobre et professionnel avec initiales */}
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-900 to-slate-900 text-amber-300 font-black text-2xl flex items-center justify-center shadow-lg border border-emerald-800 shrink-0">
+                AM
               </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <span className="text-[10px] font-mono text-slate-500 block">
-                  Format : PDF Institutionnel bilingue FR/EN prêt pour signature
-                </span>
+              <div className="space-y-1">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                  Abdelaziz Motiaa
+                </h3>
+                <p className="text-xs sm:text-sm font-bold text-emerald-800">
+                  Doctorant à l’Université Mohammed VI Polytechnique (UM6P)
+                </p>
+                <p className="text-xs text-slate-600 font-medium">
+                  Spécialisé dans la mesure et la quantification des émissions de gaz à effet de serre.
+                </p>
               </div>
             </div>
 
-            {/* Livrable 2 : Fiche MACF / CBAM Union Européenne */}
-            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:border-amber-600 hover:shadow-md flex flex-col justify-between space-y-6 transition">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center shadow-sm">
-                    <Scale className="w-6 h-6" />
-                  </div>
-                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-50 text-amber-900 border border-amber-200">
-                    Export Union Européenne
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">
-                    2. Fiche de Déclaration MACF / CBAM
-                  </h3>
-                  <p className="text-xs font-semibold text-amber-800 mt-1 uppercase tracking-wide">
-                    Règlement Européen (UE) 2023/956 Régime 2026
-                  </p>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {lang === 'en'
-                    ? 'Structured declaration sheet for European customs and buyers. Computes direct and indirect embedded emissions for steel, fertilizers, cement, and aluminum to prevent punitive default tax rates.'
-                    : 'La fiche technique officielle requise par vos clients importateurs européens. Elle calcule avec exactitude les émissions intrinsèques de vos produits pour vous éviter la surtaxe forfaitaire punitive de l’UE.'}
-                </p>
-
-                <div className="pt-2 space-y-2 border-t border-slate-100 text-[11px] text-slate-700">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span>Décomposition par Code Douanier SH (Acier, Ciment, Engrais)</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span>Facteur Électricité Réseau National ONEE homologué</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                    <span>Prêt pour le Registre Transitoire & Définitif de l’UE</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <span className="text-[10px] font-mono text-slate-500 block">
-                  Format : Tableau d’émissions intrinsèques prêt pour la douane UE
-                </span>
-              </div>
+            <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed border-t border-slate-200 pt-5">
+              <p>
+                Dans le cadre de ses travaux de recherche doctorale à l'UM6P et de ses missions d'accompagnement, Abdelaziz Motiaa met la rigueur scientifique au service de la transition environnementale des entreprises marocaines.
+              </p>
+              <p>
+                Son rôle consiste à démythifier la comptabilité carbone, à traduire les exigences des référentiels internationaux (ISO 14064-1, GHG Protocol, MACF/CBAM) en étapes opérationnelles concrètes, et à garantir à chaque dirigeant un bilan rigoureux, défendable et actionnable.
+              </p>
             </div>
 
-            {/* Livrable 3 : Attestation Empreinte Produit & Scope 3 */}
-            <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:border-teal-700 hover:shadow-md flex flex-col justify-between space-y-6 transition">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 text-teal-800 flex items-center justify-center shadow-sm">
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-teal-50 text-teal-900 border border-teal-200">
-                    Grandes Filières & Fournisseurs
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">
-                    3. Attestation Empreinte Produit
-                  </h3>
-                  <p className="text-xs font-semibold text-teal-800 mt-1 uppercase tracking-wide">
-                    Automobile, Aéronautique, Textile & Agro-alimentaire
-                  </p>
-                </div>
-
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {lang === 'en'
-                    ? 'Certified product-level carbon certificate per physical unit (per kg of fruit, canned unit, or cable harness) designed for automotive OEM audits (Stellantis, Renault) and supermarket standards.'
-                    : 'Attestation chiffrée par unité vendue (par kilo de tomates, par boîte de conserve, par faisceau de câbles). Conçue sur-mesure pour les audits Scope 3 des constructeurs et de la grande distribution internationale.'}
-                </p>
-
-                <div className="pt-2 space-y-2 border-t border-slate-100 text-[11px] text-slate-700">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                    <span>Conforme aux cahiers des charges Renault & Stellantis</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                    <span>Justificatif Eco-Score Grande Distribution (Carrefour, Tesco)</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                    <span>Traçabilité d’origine Maroc avec mix électrique décarboné</span>
-                  </div>
-                </div>
+            {/* Coordonnées de Contact Direct */}
+            <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex flex-wrap items-center gap-4">
+                <a
+                  href={`mailto:${OFFICIAL_EMAIL}`}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-800 hover:text-emerald-800 hover:border-emerald-700 transition flex items-center space-x-1.5 shadow-sm"
+                >
+                  <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>{OFFICIAL_EMAIL}</span>
+                </a>
+                <a
+                  href={`tel:${OFFICIAL_PHONE.replace(/\s+/g, '')}`}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-800 hover:text-emerald-800 hover:border-emerald-700 transition flex items-center space-x-1.5 shadow-sm"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>{OFFICIAL_PHONE}</span>
+                </a>
+                <a
+                  href={`https://wa.me/212671581167?text=${encodeURIComponent("Bonjour Abdelaziz, je souhaite échanger sur le bilan carbone de mon entreprise.")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold hover:bg-emerald-200 transition flex items-center space-x-1.5 shadow-sm"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>WhatsApp direct</span>
+                </a>
               </div>
 
-              <div className="pt-4 border-t border-slate-100">
-                <span className="text-[10px] font-mono text-slate-500 block">
-                  Format : Certificat produit horodaté avec code d’attestation unique
-                </span>
-              </div>
+              <button
+                onClick={() => openCalendlyWithPrefill()}
+                className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm transition flex items-center space-x-1.5"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-300" />
+                <span>Prendre RDV (30 min)</span>
+              </button>
             </div>
+
+            <p className="text-[11px] text-slate-400 italic">
+              Notice d'indépendance : l'affiliation doctorale à l'UM6P reflète le parcours académique du consultant et ne constitue ni une certification professionnelle ni une garantie institutionnelle de l'université.
+            </p>
           </div>
         </div>
       </section>
 
-
-
-      {/* SECTION VEDETTE : THÈMES ET PRODUITS MAROCAINS (MACF, AGRICULTURE, INDUSTRIE) */}
-      <section id="produits-maroc" className="py-20 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-800">
-              {lang === 'en' ? 'Product Footprint & Export Themes' : 'Traçabilité & Déclaration Carbone par Filière'}
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 7 — QUESTIONS FRÉQUENTES (FAQ) */}
+      {/* ------------------------------------------------------------- */}
+      <section id="faq" className="py-20 border-b border-slate-200 bg-slate-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="text-center space-y-3">
+            <span className="px-3 py-1 rounded-full bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider inline-block">
+              FAQ
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {lang === 'en'
-                ? 'Tailored for Moroccan Products Exported Worldwide'
-                : 'Conçu sur-mesure pour les Produits Exportés par le Maroc'}
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">
+              Questions Fréquentes
             </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {lang === 'en'
-                ? 'Select a sector below to explore real embedded carbon footprint calculations, compliance dossiers, and CBAM export readiness.'
-                : 'Sélectionnez une filière marocaine pour visualiser la décomposition réelle des émissions directes/indirectes et les dossiers d’exportation conformes.'}
+            <p className="text-slate-600 text-sm max-w-xl mx-auto">
+              Toutes les réponses à vos questions sur notre accompagnement, les tarifs, la durée et les données nécessaires.
             </p>
           </div>
 
-          {/* Sélecteur de filière interactive */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {MOROCCAN_PRODUCTS.map((prod) => {
-              const Icon = prod.icon;
-              const isSelected = selectedProduct.id === prod.id;
-
+          <div className="space-y-3">
+            {faqList.map((item, index) => {
+              const isOpen = openFaqIndex === index;
               return (
-                <button
-                  key={prod.id}
-                  onClick={() => setSelectedProduct(prod)}
-                  className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between space-y-3 ${
-                    isSelected
-                      ? 'bg-emerald-50 border-emerald-800 shadow-sm text-emerald-950 font-bold'
-                      : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-700'
-                  }`}
+                <div
+                  key={index}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isSelected ? 'bg-emerald-800 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                      <Icon className="w-4 h-4" />
+                  <button
+                    onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                    className="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 font-bold text-slate-900 text-sm sm:text-base hover:text-emerald-800 transition"
+                  >
+                    <span>{item.q}</span>
+                    <span className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-slate-600">
+                      {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 sm:px-6 sm:pb-6 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                      {item.a}
                     </div>
-                    {isSelected && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-700"></span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block line-clamp-1">
-                      {lang === 'en' ? prod.sectorEn : prod.sectorFr}
-                    </span>
-                    <span className="text-[10px] text-slate-500 block truncate mt-0.5">
-                      {prod.code}
-                    </span>
-                  </div>
-                </button>
+                  )}
+                </div>
               );
             })}
           </div>
 
-          {/* Carte Thématique du Produit Marocain Sélectionné */}
-          <div className="bg-slate-50 rounded-3xl border border-slate-200 p-8 shadow-sm relative overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* Colonne gauche : Profil et contexte marocain */}
-              <div className="lg:col-span-7 space-y-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${selectedProduct.badgeBg} ${selectedProduct.badgeText}`}>
-                    {selectedProduct.code}
-                  </span>
-                  <span className="text-xs text-slate-600 flex items-center space-x-1">
-                    <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{lang === 'en' ? selectedProduct.productionSiteEn : selectedProduct.productionSiteFr}</span>
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
-                    {lang === 'en' ? selectedProduct.nameEn : selectedProduct.nameFr}
-                  </h3>
-                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide mt-1">
-                    {lang === 'en' ? selectedProduct.regulatoryDriverEn : selectedProduct.regulatoryDriverFr}
-                  </p>
-                </div>
-
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {lang === 'en' ? selectedProduct.summaryEn : selectedProduct.summaryFr}
-                </p>
-
-                {/* Répartition des émissions pour ce produit */}
-                <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase">
-                    <span>Structure d’émissions typique</span>
-                    <span className="text-slate-900 font-mono text-sm font-bold">
-                      {selectedProduct.sampleIntensity} {selectedProduct.intensityUnit}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 text-xs pt-1">
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block font-medium">Direct (Procédé / Fours)</span>
-                      <span className="text-base font-bold text-amber-700 font-mono">{selectedProduct.scopeBreakdown.scope1}%</span>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block font-medium">Indirect (Élec ONEE)</span>
-                      <span className="text-base font-bold text-emerald-800 font-mono">{selectedProduct.scopeBreakdown.scope2}%</span>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block font-medium">Amont / Fret TIR</span>
-                      <span className="text-base font-bold text-teal-800 font-mono">{selectedProduct.scopeBreakdown.scope3}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Colonne droite : Fiche de conformité générée */}
-              <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center space-x-2">
-                    <SelectedIcon className="w-5 h-5 text-emerald-800" />
-                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Dossier Technique Prêt à l’Emploi</span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Conforme 2026
-                  </span>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <span className="text-slate-500 text-[10px] block font-bold">TYPE DE LIVRABLE :</span>
-                    <span className="text-slate-900 font-bold block">
-                      {lang === 'en' ? selectedProduct.dossierTypeEn : selectedProduct.dossierTypeFr}
-                    </span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-slate-700">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Règlement applicable :</span>
-                      <span className="font-semibold text-slate-900">UE 2023/956 & ISO 14064</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Précision garantie :</span>
-                      <span className="font-semibold text-emerald-800">Conforme aux audits</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Périmètre géographique :</span>
-                      <span className="font-semibold text-slate-900">Maroc (MA)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Sécurité des données :</span>
-                      <span className="font-semibold text-emerald-800">Facteurs certifiés & protégés</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      onClick={() => {
-                        setAuthTab('register');
-                        setShowAuthModal(true);
-                      }}
-                      className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
-                    >
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>{lang === 'en' ? 'Start My Carbon Accounting (0 MAD)' : 'Calculer l’empreinte de mes produits (Gratuit)'}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION INSCRIPTION DIRECTE ENTREPRISE & CONNEXION */}
-      <section id="inscription" className="py-20 bg-gradient-to-b from-slate-50 via-white to-slate-50 border-b border-slate-200 scroll-mt-20">
-        <div id="demo-accounts" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm text-emerald-900 text-xs font-bold tracking-wide">
-              <span>🇲🇦</span>
-              <span>Déploiement Entreprises Marocaines • Accès Gratuit & Immédiat</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {lang === 'en' ? 'Start Your Certified Carbon Accounting' : 'Démarrez Votre Comptabilité Carbone'}
-            </h2>
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-              {lang === 'en'
-                ? 'Create your free corporate account in 1 minute. Direct access to Scope 1, 2, and 3 calculations, ONEE electricity bills ingestion, and official ISO 14064-1 & EU CBAM reports.'
-                : 'Créez l’espace de votre entreprise en 1 minute. Accédez directement à vos calculs Scopes 1, 2 et 3, intégrez vos factures ONEE et générez vos bilans officiels ISO 14064-1 et MACF sans frais.'}
+          <div className="text-center pt-4">
+            <p className="text-xs text-slate-500">
+              Une autre question spécifique à votre activité ?
             </p>
-          </div>
-
-          {/* Carte avec onglets : Inscription gratuite / Se connecter */}
-          <div className="bg-white rounded-3xl border border-slate-300 shadow-lg p-6 sm:p-10">
-            {/* Basculeur Onglets */}
-            <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200 max-w-md mx-auto mb-8">
-              <button
-                type="button"
-                onClick={() => setAuthTab('register')}
-                className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 ${
-                  authTab === 'register'
-                    ? 'bg-emerald-800 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" />
-                <span>{lang === 'en' ? 'Create Company Account' : 'Créer mon compte entreprise'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthTab('login')}
-                className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 ${
-                  authTab === 'login'
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Lock className="w-4 h-4" />
-                <span>{lang === 'en' ? 'Sign In' : 'Se connecter'}</span>
-              </button>
-            </div>
-
-            {authTab === 'register' ? (
-              <form onSubmit={handleRegister} className="space-y-6">
-                {regError && (
-                  <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
-                    <span className="font-bold">⚠️</span>
-                    <span>{regError}</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Nom de l'entreprise / Raison sociale <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regCompanyName}
-                      onChange={e => setRegCompanyName(e.target.value)}
-                      placeholder="Ex: AgroAtlas Maroc SARL"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Nom & Prénom du responsable <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regFullName}
-                      onChange={e => setRegFullName(e.target.value)}
-                      placeholder="Ex: Karim Benjelloun"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Email professionnel <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={regEmail}
-                      onChange={e => setRegEmail(e.target.value)}
-                      placeholder="direction@entreprise.ma"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Mot de passe <span className="text-rose-500">*</span> <span className="text-[11px] font-normal text-slate-500">(min. 6 car.)</span>
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={regPassword}
-                      onChange={e => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Ville d'implantation principale <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={regCity}
-                      onChange={e => setRegCity(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 bg-white"
-                    >
-                      {MOROCCAN_CITIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Secteur d'activité <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={regSector}
-                      onChange={e => setRegSector(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 bg-white"
-                    >
-                      {MOROCCAN_SECTORS.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Numéro de téléphone / WhatsApp <span className="text-[11px] font-normal text-slate-500">(facultatif, pour assistance technique)</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={regPhone}
-                      onChange={e => setRegPhone(e.target.value)}
-                      placeholder="+212 6..."
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center space-x-2 text-xs text-slate-500">
-                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>0 MAD • Données souveraines hébergées au Maroc • Aucun engagement</span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={regLoading}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>{regLoading ? 'Création de votre espace...' : 'Activer Mon Espace & Commencer'}</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-200" />
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleLogin} className="space-y-6 max-w-md mx-auto">
-                {loginError && (
-                  <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
-                    <span className="font-bold">⚠️</span>
-                    <span>{loginError}</span>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Email professionnel
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={loginEmail}
-                    onChange={e => setLoginEmail(e.target.value)}
-                    placeholder="direction@entreprise.ma"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Mot de passe
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={loginPassword}
-                    onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>{loginLoading ? 'Connexion...' : 'Accéder à mon espace entreprise'}</span>
-                  </button>
-                </div>
-              </form>
-            )}
+            <button
+              onClick={() => openCalendlyWithPrefill()}
+              className="mt-2 text-xs font-bold text-emerald-800 hover:underline"
+            >
+              Posez-la directement lors de votre échange gratuit de 30 minutes →
+            </button>
           </div>
         </div>
       </section>
 
-
-      {/* BOÎTE À OUTILS & SIMULATEUR FACTURES MAROCAINES EN DIRHAMS (MAD) */}
-      <section id="simulateur" className="py-24 bg-slate-50 border-b border-slate-200 relative">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
-              <Receipt className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Simulateur Factures en Dirhams (MAD) & Unités Physiques</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {lang === 'en'
-                ? 'Convert Your Moroccan Utility Bills into Certified Carbon Data'
-                : 'Convertissez vos Factures en Empreinte Carbone Réelle'}
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
-              {lang === 'en'
-                ? 'Select a routine expense and enter either your bill amount in Moroccan Dirhams (MAD) or direct physical volume. The certified Moroccan calculation runs securely on our servers.'
-                : 'Sélectionnez une dépense courante et saisissez directement le montant en Dirhams (MAD) de votre facture ONEE ou reçu gasoil. Notre moteur effectue la conversion énergétique et le calcul d’émissions homologué.'}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-            {/* Basculeur de mode : Facture MAD vs Quantité physique */}
-            <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 max-w-md mx-auto">
-              <button
-                type="button"
-                onClick={() => setSimMode('mad')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
-                  simMode === 'mad'
-                    ? 'bg-emerald-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Coins className="w-3.5 h-3.5 text-amber-300" />
-                <span>Facture en Dirhams (MAD)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSimMode('physical')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
-                  simMode === 'physical'
-                    ? 'bg-emerald-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Calculator className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Unités physiques (kWh, L...)</span>
-              </button>
-            </div>
-
-            {/* Type d'énergie / dépense */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { id: 'elec', label: 'Électricité ONEE', sub: 'Moyenne Tension', icon: Zap },
-                { id: 'diesel', label: 'Gasoil / Flotte', sub: 'Stations Afriquia/Shell', icon: Factory },
-                { id: 'gaz', label: 'Gaz Butane / Four', sub: 'Caisse Compensation', icon: TrendingDown },
-                { id: 'fret', label: 'Fret Routier TIR', sub: 'Transport Marchandises', icon: Globe2 }
-              ].map(item => {
-                const Icon = item.icon;
-                const isSelected = simType === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setSimType(item.id as any)}
-                    className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center space-y-1.5 ${
-                      isSelected
-                        ? 'bg-emerald-50 border-emerald-600 text-emerald-950 font-bold shadow-sm ring-1 ring-emerald-600'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-100/60'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${isSelected ? 'text-emerald-700' : 'text-slate-400'}`} />
-                    <span className="text-xs">{item.label}</span>
-                    <span className="text-[10px] text-slate-500 font-normal">{item.sub}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Formulaire de saisie dynamique */}
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
-              {simMode === 'mad' ? (
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <label className="text-xs font-bold text-slate-800">
-                      Montant de la facture en Dirhams Marocains (MAD) :
-                    </label>
-                    {/* Boutons d'accès rapide */}
-                    <div className="flex items-center space-x-1.5">
-                      {[10000, 35000, 75000, 150000].map(val => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => setSimAmountMad(val)}
-                          className={`px-2.5 py-1 text-[10px] font-mono rounded-lg border transition ${
-                            simAmountMad === val
-                              ? 'bg-emerald-800 text-white border-emerald-800 font-bold'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          {val.toLocaleString('fr-FR')} DH
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      value={simAmountMad}
-                      onChange={e => setSimAmountMad(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-emerald-600 font-mono text-base text-slate-900 outline-none pl-11 shadow-sm"
-                    />
-                    <Coins className="w-5 h-5 text-amber-600 absolute left-3.5 top-3.5" />
-                    <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-500">
-                      MAD (Dirhams)
-                    </span>
-                  </div>
-
-                  {/* Explication pédagogique de la conversion marocaine */}
-                  <div className="p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200 text-xs space-y-1.5">
-                    <div className="flex items-center space-x-2 text-emerald-900 font-bold text-[11px] uppercase tracking-wide">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Barème tarifaire national marocain de référence :</span>
-                    </div>
-                    <p className="text-slate-700 leading-relaxed text-[11px]">
-                      {simType === 'elec' && (
-                        <>
-                          Tarif ONEE Moyenne Tension PME/Industrie : <strong>1,15 MAD HT / kWh</strong>. Votre facture de{' '}
-                          <strong>{simAmountMad.toLocaleString('fr-FR')} MAD</strong> correspond à environ{' '}
-                          <strong className="text-emerald-900 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} kWh</strong>.
-                        </>
-                      )}
-                      {simType === 'diesel' && (
-                        <>
-                          Gasoil pompes nationales : <strong>12,50 MAD TTC / Litre</strong>. Votre dépense de{' '}
-                          <strong>{simAmountMad.toLocaleString('fr-FR')} MAD</strong> correspond à environ{' '}
-                          <strong className="text-emerald-900 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} Litres</strong> de gasoil routier.
-                        </>
-                      )}
-                      {simType === 'gaz' && (
-                        <>
-                          Gaz Butane (Caisse de Compensation) : <strong>50 MAD la bonbonne de 12 kg</strong> (soit 4,17 MAD/kg). Votre facture correspond à environ{' '}
-                          <strong className="text-emerald-900 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} kg</strong> de gaz liquéfié.
-                        </>
-                      )}
-                      {simType === 'fret' && (
-                        <>
-                          Barème transport routier marchandises : estimation indicative basée sur une distance interurbaine moyenne de 200 km.
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {simType === 'elec' && 'Consommation d’électricité (kWh)'}
-                      {simType === 'diesel' && 'Volume de carburant (litres de gasoil)'}
-                      {simType === 'gaz' && 'Énergie consommée (kWh)'}
-                      {simType === 'fret' && 'Masse transportée (tonnes)'}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={simQty}
-                      onChange={e => setSimQty(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:border-emerald-600 font-mono text-sm text-slate-900 outline-none shadow-sm"
-                    />
-                  </div>
-
-                  {simType === 'fret' ? (
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Distance parcourue (km)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={simDist}
-                        onChange={e => setSimDist(Number(e.target.value))}
-                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:border-emerald-600 font-mono text-sm text-slate-900 outline-none shadow-sm"
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs space-y-1">
-                      <div className="text-slate-500 font-medium">Barème officiel appliqué :</div>
-                      <div className="font-bold text-slate-900 flex items-center space-x-1.5">
-                        <Lock className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <span>
-                          {simType === 'elec' && 'Mix Électrique Réseau National ONEE'}
-                          {simType === 'diesel' && 'Carburant Flotte Routière Maroc'}
-                          {simType === 'gaz' && 'Gaz Vapeur & Industrie Certifié'}
-                        </span>
-                      </div>
-                      <div className="text-emerald-800 text-[11px] font-semibold">🔒 Calcul officiel sur le serveur — Formules protégées</div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Carte de Résultat Officiel et Équivalence Terrestre Marocaine */}
-            <div className="bg-gradient-to-br from-slate-900 to-emerald-950 text-white rounded-2xl p-6 border border-emerald-800/60 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center space-x-1.5">
-                  <BadgeCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Empreinte Carbone Calculée Certifiée</span>
-                </span>
-                <div className="text-3xl sm:text-4xl font-black text-white">
-                  {calculateQuickSim().toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                  <span className="text-lg font-normal text-emerald-200">tCO2e</span>
-                </div>
-                <div className="text-xs text-emerald-300 font-medium">
-                  Soit <strong>{(calculateQuickSim() * 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kgCO2e</strong> déclarables.
-                </div>
-                <div className="text-[11px] text-slate-300 pt-1">
-                  Équivaut à la séquestration annuelle d’environ{' '}
-                  <strong className="text-amber-300 font-mono">{Math.round((calculateQuickSim() * 1000) / 25)} arganiers / cèdres</strong> de l'Atlas marocain.
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => {
-                    setAuthTab('register');
-                    setShowAuthModal(true);
-                  }}
-                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-                >
-                  <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>Enregistrer dans mon Bilan (Gratuit)</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setAuthTab('login');
-                    setShowAuthModal(true);
-                  }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 text-center transition"
-                >
-                  Se connecter à mon espace
-                </button>
-              </div>
-            </div>
-
-            {/* Note de confidentialité souveraine */}
-            <div className="text-[11px] text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-start space-x-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-              <span className="leading-relaxed">
-                <strong>Confidentialité garantie :</strong> Atlas Carbone effectue tous les calculs déterministes sur ses serveurs sécurisés sans divulguer les formules internes. Vos données de facturation restent strictement confinées à votre entreprise.
-              </span>
-            </div>
-          </div>
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 8 — FORMULAIRE DE QUALIFICATION DE L'ENTREPRISE */}
+      {/* ------------------------------------------------------------- */}
+      <section className="py-20 border-b border-slate-200 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <CompanyQualificationForm
+            lang={lang}
+            onOpenCalendly={(prefill) => openCalendlyWithPrefill(prefill)}
+          />
         </div>
       </section>
 
-      {/* SECTION DU CALENDRIER RÉGLEMENTAIRE & FINANCEMENT VERT DU ROYAUME (2026 - 2030) */}
-      <section id="calendrier" className="py-24 bg-white border-b border-slate-200 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold uppercase tracking-wider">
-              <Calendar className="w-3.5 h-3.5 text-amber-700" />
-              <span>Cap 2026 - 2030 • Vision Stratégique du Royaume</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {lang === 'en'
-                ? 'Moroccan Green Regulatory & Banking Roadmap (2026 - 2030)'
-                : 'Calendrier Réglementaire & Financement Vert (2026 - 2030)'}
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {lang === 'en'
-                ? 'Anticipate deadlines: from European carbon border tax enforcement to Moroccan green credit regulations and the 2030 sustainable FIFA World Cup.'
-                : 'Pourquoi les entreprises marocaines doivent structurer leur bilan dès maintenant ? Voici les échéances incontournables qui s’imposent à l’économie nationale.'}
-            </p>
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION 9 — APPEL À L'ACTION FINAL (CTA) */}
+      {/* ------------------------------------------------------------- */}
+      <section className="py-20 bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white relative overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center mx-auto text-emerald-300 shadow-inner">
+            <Calendar className="w-7 h-7 text-amber-300" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Jalon 1: 2026 */}
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-300 hover:shadow-md transition flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-amber-800 font-mono">2026</span>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                    Échéance Immédiate
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Taxe Carbone Européenne (Régime Définitif MACF)
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Fin du simple reporting déclaratif. Les exportateurs marocains d'acier, d'aluminium, de ciment et d'engrais doivent fournir leurs émissions réelles sous peine de surtaxes douanières maximales à l'entrée de l'UE.
-                </p>
-              </div>
-              <div className="pt-3 border-t border-slate-200 text-[11px] text-emerald-800 font-semibold flex items-center space-x-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Module MACF Atlas Carbone prêt</span>
-              </div>
-            </div>
-
-            {/* Jalon 2: 2026-2027 */}
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-300 hover:shadow-md transition flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-emerald-800 font-mono">2026/27</span>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
-                    Système Bancaire
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Directive Climat Bank Al-Maghrib & Crédits Verts
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Les banques commerciales marocaines conditionnent les taux d'intérêt et l'octroi des crédits d'investissement à l'évaluation du risque climatique et à la production d'un Bilan Carbone conforme ISO 14064.
-                </p>
-              </div>
-              <div className="pt-3 border-t border-slate-200 text-[11px] text-amber-800 font-semibold flex items-center space-x-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
-                <span>Rapports compatibles Banques & Tamwilcom</span>
-              </div>
-            </div>
-
-            {/* Jalon 3: 2028 */}
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-300 hover:shadow-md transition flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-teal-800 font-mono">2028</span>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-200">
-                    Marchés Publics
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Éco-Conditionnalité de la Commande Publique
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Application généralisée du Décret sur les marchés publics marocains. Les appels d'offres de l'État et des entreprises publiques accordent des bonifications de points aux entreprises ayant quantifié leur empreinte.
-                </p>
-              </div>
-              <div className="pt-3 border-t border-slate-200 text-[11px] text-teal-800 font-semibold flex items-center space-x-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-700" />
-                <span>Attestations probantes pour appels d’offres</span>
-              </div>
-            </div>
-
-            {/* Jalon 4: 2030 */}
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 hover:border-emerald-300 hover:shadow-md transition flex flex-col justify-between space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-amber-800 font-mono">2030</span>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                    Cap Mondial 2030
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Engagement NDC Maroc (-45,5%) & Coupe du Monde
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Objectif climatique national du Royaume du Maroc et organisation conjointe de la Coupe du Monde FIFA 2030 bas-carbone. Les prestataires et sous-traitants doivent prouver leur trajectoire de décarbonation.
-                </p>
-              </div>
-              <div className="pt-3 border-t border-slate-200 text-[11px] text-amber-800 font-semibold flex items-center space-x-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
-                <span>Trajectoires pluriannuelles certifiées</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* SECTION OFFRES & TARIFS EN DIRHAMS MAROCAINS (MAD) */}
-      <section id="tarifs" className="py-24 bg-white border-b border-slate-200 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
-              <Coins className="w-3.5 h-3.5 text-emerald-700" />
-              <span>{lang === 'en' ? 'Moroccan Dirham (MAD) Official Pricing' : 'Tarification Officielle en Dirhams Marocains (MAD)'}</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {lang === 'en'
-                ? 'Transparent Pricing Tailored to Moroccan Companies'
-                : 'Des Tarifs Clairs et Accessibles en Dirhams (MAD)'}
-            </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {lang === 'en'
-                ? 'From free corporate start to heavy industry multisite deployments. Deterministic calculations, ISO 14064-1 compliance, and official EU CBAM declarations.'
-                : 'De l’inscription gratuite directe aux déploiements industriels multisites. Tous les calculs sont 100% déterministes et conformes ISO 14064-1 & Déclaration MACF Europe.'}
-            </p>
-
-            {/* Sélecteur de rythme de facturation */}
-            <div className="pt-4 flex justify-center">
-              <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setPricingBillingCycle('annual')}
-                  className={`px-4 py-2 rounded-lg transition flex items-center space-x-1.5 ${
-                    pricingBillingCycle === 'annual'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <span>{lang === 'en' ? 'Annual (Best Value)' : 'Annuel (2 mois offerts)'}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500 text-slate-950 font-black">
-                    -20%
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPricingBillingCycle('monthly')}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    pricingBillingCycle === 'monthly'
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {lang === 'en' ? 'Monthly' : 'Mensuel'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Grille des 4 cartes d'offres en MAD */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* 1. Compte Entreprise Gratuit */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-700/60 flex flex-col justify-between space-y-6 hover:shadow-lg transition relative">
-              <div className="absolute -top-3 left-6 px-3 py-0.5 bg-emerald-800 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shadow-sm">
-                {lang === 'en' ? 'Recommended • Free Start' : 'Recommandé • Inscription Gratuite'}
-              </div>
-
-              <div className="space-y-4 pt-1">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                    {lang === 'en' ? 'Enterprise • Immediate Access' : 'Compte Entreprise • Accès Immédiat'}
-                  </span>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
-                    {lang === 'en' ? 'Free Start' : 'Démarrage Gratuit'}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    {lang === 'en'
-                      ? 'Direct free registration to start your corporate carbon accounting immediately with official Moroccan factors.'
-                      : 'Inscription gratuite directe pour débuter immédiatement votre comptabilité carbone avec les facteurs officiels marocains.'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200">
-                  <div className="text-3xl font-black text-emerald-950 font-mono">0 MAD</div>
-                  <span className="text-[10px] text-emerald-800 font-bold">
-                    {lang === 'en' ? 'Free corporate account • No credit card' : 'Compte gratuit • Sans carte bancaire'}
-                  </span>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-700">
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Accès illimité sans limite de temps</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Inventaire Scopes 1, 2 et 3 complet</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>670+ facteurs d'émission officiels marocains</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Saisie factures ONEE, carburants et intrants</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Exercice 2026 configuré immédiatement</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => {
-                    setAuthTab('register');
-                    setShowAuthModal(true);
-                  }}
-                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow transition text-center block"
-                >
-                  {lang === 'en' ? 'Create Free Company Account' : 'Créer mon compte gratuit'}
-                </button>
-              </div>
-            </div>
-
-            {/* 2. PME Climat */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
-              <div className="space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                    {lang === 'en' ? 'PME & Public Tenders' : 'PME & Marchés Publics'}
-                  </span>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
-                    {lang === 'en' ? 'SME Climate Pack' : 'Pack PME Climat'}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    {lang === 'en'
-                      ? 'The turnkey solution for Moroccan SMEs to comply with public procurement decree.'
-                      : 'La solution complète pour les PME marocaines soumissionnant aux marchés de l’État.'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-3xl font-black text-slate-900 font-mono">
-                      {pricingBillingCycle === 'annual' ? '4 900' : '490'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
-                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 block mt-0.5">
-                    Soit {pricingBillingCycle === 'annual' ? '5 880' : '588'} MAD TTC (TVA 20%)
-                  </span>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-700">
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span><strong>1 Site</strong> d’exploitation permanent au Maroc</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Scopes 1 & 2 complets + Scope 3 essentiel</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Saisie en Dirhams (ONEE, Gasoil, Gaz)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Bilans PDF certifiés ISO 14064-1 illimités</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Jusqu'à 3 utilisateurs inclus</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => setShowPricingModal(true)}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
-                >
-                  {lang === 'en' ? 'Subscribe in MAD' : 'Souscrire au Pack PME'}
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Entreprise & Exportateur MACF (Recommandé) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-emerald-600 ring-4 ring-emerald-600/10 flex flex-col justify-between space-y-6 shadow-xl relative">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider shadow">
-                {lang === 'en' ? 'Recommended • EU Exporters' : 'Recommandé • Exportateurs UE'}
-              </div>
-
-              <div className="space-y-4 pt-1">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                    {lang === 'en' ? 'Industry & European CBAM' : 'Industrie & Export UE'}
-                  </span>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
-                    {lang === 'en' ? 'Enterprise & CBAM Pack' : 'Pack Entreprise & MACF'}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    {lang === 'en'
-                      ? 'Designed for Moroccan manufacturers exporting to EU and subject to European carbon border tax.'
-                      : 'Conçu pour les industriels marocains exportant vers l’Union Européenne et soumis au MACF.'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200">
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-3xl font-black text-slate-900 font-mono">
-                      {pricingBillingCycle === 'annual' ? '14 500' : '1 450'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
-                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-800 font-semibold block mt-0.5">
-                    Soit {pricingBillingCycle === 'annual' ? '17 400' : '1 740'} MAD TTC (TVA 20%)
-                  </span>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-700">
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span><strong>Jusqu'à 5 sites</strong> de production / usines</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span><strong>Module MACF / CBAM Union Européenne</strong></span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Intensité carbone par tonne produite pour douanes UE</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Directive Climat Bank Al-Maghrib (Crédits Verts)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>10 utilisateurs & Rôles RBAC personnalisés</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Support prioritaire sous 24h</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => setShowPricingModal(true)}
-                  className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow-md transition text-center block flex items-center justify-center space-x-2"
-                >
-                  <span>{lang === 'en' ? 'Subscribe to CBAM Pack' : 'Souscrire au Pack MACF'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* 4. Grand Compte & Industrie */}
-            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 flex flex-col justify-between space-y-6 hover:shadow-md transition">
-              <div className="space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    {lang === 'en' ? 'Corporate & Heavy Industry' : 'Grand Compte & Industrie'}
-                  </span>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">
-                    {lang === 'en' ? 'Corporate Heavy Industry' : 'Pack Grand Compte'}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    {lang === 'en'
-                      ? 'For large groups, metallurgy, cement, fertilizers, and multi-facility logistics fleets.'
-                      : 'Pour les grands groupes multisites, sidérurgie, cimenteries, engrais et flottes logistiques.'}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-white rounded-2xl border border-slate-200">
-                  <div className="flex items-baseline space-x-1">
-                    <span className="text-3xl font-black text-slate-900 font-mono">
-                      {pricingBillingCycle === 'annual' ? '29 000' : '2 900'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-600">MAD HT</span>
-                    <span className="text-[10px] text-slate-500">/{pricingBillingCycle === 'annual' ? 'an' : 'mois'}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 block mt-0.5">
-                    Soit {pricingBillingCycle === 'annual' ? '34 800' : '3 480'} MAD TTC (TVA 20%)
-                  </span>
-                </div>
-
-                <ul className="space-y-2.5 text-xs text-slate-700">
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span><strong>Sites et utilisateurs illimités</strong></span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Portail vérificateur externe (Auditeur ISO 14065)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Connecteurs API ERP & imports massifs</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Trajectoire de décarbonation Cap 2030 sur-mesure</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                    <span>Accompagnement expert senior & NDA renforcé</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => setShowPricingModal(true)}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition text-center block"
-                >
-                  {lang === 'en' ? 'Get Corporate Quote / Proforma' : 'Demander un Bon de Commande'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Bandeau de réassurance commerciale et bancaire */}
-          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-            <div className="space-y-2 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start space-x-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h4 className="text-base font-extrabold text-white">
-                  Règlement par Virement Bancaire Marocain ou Carte Bancaire CMI
-                </h4>
-              </div>
-              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                Toutes les offres font l'objet d'un Bon de Commande officiel et d'une facture proforma immédiate avec RIB bancaire marocain (Attijariwafa bank / Banque Populaire). Mention légale de TVA marocaine 20% pour récupération comptable.
-              </p>
-            </div>
-            <div className="flex items-center space-x-3 shrink-0">
-              <button
-                onClick={() => setShowPricingModal(true)}
-                className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
-              >
-                <Zap className="w-4 h-4 text-slate-950" />
-                <span>Ouvrir le Module de Souscription en MAD</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Formulaire de Contact & Devis Officiel */}
-      <section id="contact" className="py-24 bg-slate-50 border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-extrabold text-slate-900">Demander une Démonstration ou un Devis</h2>
-            <p className="text-sm text-slate-600">
-              Remplissez ce formulaire pour recevoir un devis officiel personnalisé en Dirhams marocains (MAD).
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-            {leadSubmitted ? (
-              <div className="p-8 text-center space-y-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">Demande enregistrée avec succès !</h3>
-                <p className="text-sm text-slate-600 max-w-md mx-auto">
-                  Merci <strong>{leadName}</strong>. Un accusé de réception a été envoyé à <strong>{leadEmail}</strong>.
-                  Notre responsable vous recontactera sous 24h.
-                </p>
-                <button
-                  onClick={() => setLeadSubmitted(false)}
-                  className="px-4 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition border border-emerald-200"
-                >
-                  Envoyer une autre demande
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleLeadSubmit} className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Nom complet *</label>
-                    <input
-                      type="text"
-                      required
-                      value={leadName}
-                      onChange={e => setLeadName(e.target.value)}
-                      placeholder="M. Karim Bennani"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Email professionnel *</label>
-                    <input
-                      type="email"
-                      required
-                      value={leadEmail}
-                      onChange={e => setLeadEmail(e.target.value)}
-                      placeholder="k.bennani@entreprise.ma"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Raison sociale *</label>
-                    <input
-                      type="text"
-                      required
-                      value={leadCompany}
-                      onChange={e => setLeadCompany(e.target.value)}
-                      placeholder="Nom de la société"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Téléphone</label>
-                    <input
-                      type="tel"
-                      value={leadPhone}
-                      onChange={e => setLeadPhone(e.target.value)}
-                      placeholder="+212 6 XX XX XX XX"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Secteur d'activité</label>
-                    <select
-                      value={leadSector}
-                      onChange={e => setLeadSector(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                    >
-                      <option>Industrie agroalimentaire</option>
-                      <option>Métallurgie / Sidérurgie (MACF)</option>
-                      <option>Ciment & BTP</option>
-                      <option>Textile & Cuir</option>
-                      <option>Automobile & Aéronautique</option>
-                      <option>Chimie & Engrais</option>
-                      <option>Services & Logistique</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Votre projet ou besoin spécifique</label>
-                  <textarea
-                    rows={3}
-                    value={leadMessage}
-                    onChange={e => setLeadMessage(e.target.value)}
-                    placeholder="Précisez votre demande (bilan Scopes 1-2-3, conformité MACF, sites concernés)..."
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-emerald-600 shadow-sm"
-                  ></textarea>
-                </div>
-
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <span className="text-[11px] text-slate-500">
-                    Vos données sont strictement protégées conformément à la Loi marocaine 09-08 (CNDP).
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={leadLoading}
-                    className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs rounded-xl shadow-sm transition"
-                  >
-                    {leadLoading ? 'Envoi en cours...' : 'Envoyer ma demande de devis'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Coordonnées directes officielles */}
-            <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-medium block">Contact Officiel</span>
-                <span className="font-bold text-slate-900 text-sm mt-0.5 block">Abdelaziz Motiaa</span>
-                <span className="text-slate-500 text-[11px]">Responsable Plateforme Atlas Carbone</span>
-              </div>
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-medium block">Email Direct</span>
-                <a
-                  href="mailto:abdelaziz.motiaa@gmail.com"
-                  className="font-bold text-emerald-800 hover:underline text-sm mt-0.5 block truncate"
-                >
-                  abdelaziz.motiaa@gmail.com
-                </a>
-                <span className="text-slate-500 text-[11px]">Réponse garantie sous 24h</span>
-              </div>
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-slate-500 font-medium block">Téléphone</span>
-                <a
-                  href="tel:+212671581167"
-                  className="font-bold text-emerald-800 hover:underline text-sm mt-0.5 block"
-                >
-                  +212 6 71 58 11 67
-                </a>
-                <span className="text-slate-500 text-[11px]">Casablanca (GMT+1)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Newsletter Réglementaire */}
-      <section className="py-14 bg-white border-b border-slate-200 text-slate-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold">
-            <Mail className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Veille Réglementaire Carbone Maroc & MACF</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Restez informé des évolutions réglementaires et facteurs d’émission
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+            Prêt à réaliser votre premier bilan carbone ?
           </h2>
-          <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
-            Recevez des analyses vérifiées sur les facteurs d’émissions nationaux, le calendrier MACF et les aides à la décarbonation. Pas de spam, désinscription en 1 clic.
+
+          <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+            Présentez-nous votre activité lors d’un échange gratuit de 30 minutes. Nous identifierons ensemble vos besoins et les premières étapes de votre démarche.
           </p>
 
-          <form onSubmit={handleNewsletterSubmit} className="max-w-xl mx-auto pt-4 space-y-3">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="email"
-                required
-                value={newsletterEmail}
-                onChange={e => setNewsletterEmail(e.target.value)}
-                placeholder="votre.email@entreprise.ma"
-                className="flex-1 px-4 py-3 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs outline-none focus:border-emerald-600 shadow-sm"
-              />
-              <button
-                type="submit"
-                disabled={newsletterLoading}
-                className="px-6 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition shrink-0"
-              >
-                {newsletterLoading ? 'Inscription...' : "M'inscrire"}
-              </button>
-            </div>
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={() => openCalendlyWithPrefill()}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl hover:shadow-2xl transition flex items-center justify-center space-x-2 border border-emerald-400/30"
+            >
+              <Calendar className="w-4 h-4 text-amber-300" />
+              <span>Réserver mon rendez-vous gratuit (30 min)</span>
+            </button>
 
-            <label className="flex items-start space-x-2 text-left text-xs text-slate-600 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={newsletterConsent}
-                onChange={e => setNewsletterConsent(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-emerald-800 focus:ring-0"
-              />
-              <span>
-                J’accepte de recevoir la veille réglementaire (double opt-in avec confirmation, distinct de la création de compte).
-              </span>
-            </label>
+            <a
+              href="https://wa.me/212671581167?text=Bonjour,%20je%20souhaite%20obtenir%20des%20informations%20sur%20votre%20accompagnement%20pour%20r%C3%A9aliser%20un%20bilan%20carbone%20de%20mon%20entreprise."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition flex items-center justify-center space-x-2 border border-white/20"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-300" />
+              <span>Échanger sur WhatsApp (+212 671 581 167)</span>
+            </a>
+          </div>
 
-            {newsletterMsg && (
-              <div
-                className={`p-3 rounded-xl text-xs text-center font-medium ${
-                  newsletterMsg.type === 'success'
-                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
-                    : 'bg-rose-50 border border-rose-300 text-rose-900'
-                }`}
-              >
-                {newsletterMsg.text}
-              </div>
-            )}
-          </form>
+          <p className="text-xs text-slate-400 pt-2">
+            Sans engagement • Réponse rapide sous 24h ouvrées
+          </p>
         </div>
       </section>
 
-      {/* Footer Minimaliste Institutionnel */}
-      <footer className="bg-slate-950 text-slate-400 py-12 border-t border-slate-800 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <span className="text-lg font-bold text-white tracking-tight">Atlas Carbone</span>
-            <p className="mt-2 text-slate-400 leading-relaxed">
-              Plateforme marocaine de comptabilité carbone, de pilotage des émissions GES et de conformité aux exigences export européennes (MACF).
-            </p>
-            <div className="mt-4 space-y-1 text-slate-400">
-              <p>👤 <strong>Abdelaziz Motiaa</strong></p>
-              <p>
-                ✉️ <a href="mailto:abdelaziz.motiaa@gmail.com" className="text-emerald-400 hover:underline">abdelaziz.motiaa@gmail.com</a>
+      {/* ------------------------------------------------------------- */}
+      {/* FOOTER */}
+      {/* ------------------------------------------------------------- */}
+      <footer className="bg-slate-950 text-slate-400 border-t border-slate-800 text-xs py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-slate-800">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-base font-extrabold text-white">Atlas Carbone</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Maroc</span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Accompagnement méthodologique et quantification des émissions de gaz à effet de serre.
               </p>
-              <p>
-                📞 <a href="tel:+212671581167" className="text-emerald-400 hover:underline">+212 6 71 58 11 67</a>
-              </p>
-              <p className="text-slate-500 pt-1">Casablanca — Royaume du Maroc</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-300">
+              <a href={`mailto:${OFFICIAL_EMAIL}`} className="hover:text-emerald-400 transition flex items-center space-x-1">
+                <Mail className="w-3.5 h-3.5" />
+                <span>{OFFICIAL_EMAIL}</span>
+              </a>
+              <a href={`tel:${OFFICIAL_PHONE.replace(/\s+/g, '')}`} className="hover:text-emerald-400 transition flex items-center space-x-1">
+                <Phone className="w-3.5 h-3.5" />
+                <span>{OFFICIAL_PHONE}</span>
+              </a>
+              <button
+                onClick={() => {
+                  setAuthTab('login');
+                  setShowAuthModal(true);
+                }}
+                className="hover:text-emerald-400 font-bold transition flex items-center space-x-1"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Espace Client / Connexion</span>
+              </button>
             </div>
           </div>
 
-          <div>
-            <h4 className="font-bold text-white mb-3">Référentiels & Méthodologie</h4>
-            <ul className="space-y-1.5 text-slate-400">
-              <li>GHG Protocol Corporate Standard</li>
-              <li>ISO 14064-1:2018 & ISO 14069</li>
-              <li>Classeur National Bilan Carbone® Maroc</li>
-              <li>Règlement UE MACF 2023/956 régime définitif</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-3">Sécurité & Confidentialité</h4>
-            <ul className="space-y-1.5 text-slate-400">
-              <li>Conformité Loi 09-08 (CNDP)</li>
-              <li>Isolation étanche des données multi-entreprises</li>
-              <li>Catalogue des facteurs sanctuarisé côté serveur</li>
-              <li>Calculs 100% déterministes certifiés</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-3">Avertissement Méthodologique</h4>
-            <p className="text-slate-400 leading-relaxed">
-              Atlas Carbone est un outil indépendant de calcul et de pilotage. Il n’est pas un organisme officiel de
-              l’État marocain, de la FM6E, de l’AMEE ou de l’ABC. Les calculs logiciels ne remplacent pas un audit de
-              certification officiel par un tiers vérificateur accrédité ISO 14065.
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+            <p>
+              © {new Date().getFullYear()} Atlas Carbone. Responsable scientifique : Abdelaziz Motiaa (UM6P). Tous droits réservés.
+            </p>
+            <p>
+              Conforme aux exigences de protection des données (CNDP Loi 09-08). Données hébergées en environnement sécurisé.
             </p>
           </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-[11px]">
-          <span>© 2026 Atlas Carbone. Développé par Abdelaziz Motiaa.</span>
-          <span className="mt-2 sm:mt-0 font-mono">Conformité ISO 14064-1 & MACF Régime 2026</span>
         </div>
       </footer>
 
-      {/* Modal Tarifs & Monétisation en MAD */}
-      <PricingModal
-        isOpen={showPricingModal}
-        onClose={() => setShowPricingModal(false)}
-        lang={lang || 'fr'}
-        isPaywallExpired={false}
-        onSubscriptionSuccess={(u, orgs) => onLoginSuccess(u, orgs)}
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL CALENDLY FLOTTANT */}
+      {/* ------------------------------------------------------------- */}
+      <CalendlyModal
+        isOpen={showCalendly}
+        onClose={() => setShowCalendly(false)}
+        lang={lang}
+        prefill={calendlyPrefill}
       />
 
-      {/* Modal Inscription Entreprise & Connexion */}
+      {/* ------------------------------------------------------------- */}
+      {/* BOUTON WHATSAPP DISCRET SUR MOBILE & DESKTOP */}
+      {/* ------------------------------------------------------------- */}
+      <WhatsAppButton lang={lang} />
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL AUTHENTIFICATION (Espace Client / Inscription) */}
+      {/* ------------------------------------------------------------- */}
       {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl border border-slate-300 shadow-2xl max-w-xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
-            {/* Bouton Fermer */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-300 shadow-2xl max-w-md w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAuthModal(false)}
               className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
@@ -2388,9 +1203,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            {/* En-tête */}
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center text-amber-300 font-bold shadow">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-amber-300 font-bold shadow">
                 <Globe2 className="w-5 h-5" />
               </div>
               <div>
@@ -2398,197 +1212,53 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   Atlas <span className="text-emerald-800">Carbone</span>
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  {authTab === 'register'
-                    ? 'Inscription gratuite pour entreprises marocaines'
-                    : 'Connexion à votre espace d’inventaire carbone'}
+                  {authTab === 'register' ? 'Créer un espace entreprise' : 'Connexion à votre espace client'}
                 </p>
               </div>
             </div>
 
-            {/* Onglets */}
+            {/* Onglets Connexion / Inscription */}
             <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 mb-6">
               <button
                 type="button"
-                onClick={() => setAuthTab('register')}
-                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
-                  authTab === 'register'
-                    ? 'bg-emerald-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                onClick={() => setAuthTab('login')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition ${
+                  authTab === 'login' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Créer un compte</span>
+                Se connecter
               </button>
               <button
                 type="button"
-                onClick={() => setAuthTab('login')}
-                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
-                  authTab === 'login'
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                onClick={() => setAuthTab('register')}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition ${
+                  authTab === 'register' ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Se connecter</span>
+                Créer un compte
               </button>
             </div>
 
-            {authTab === 'register' ? (
-              <form onSubmit={handleRegister} className="space-y-4">
-                {regError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
-                    <span className="font-bold">⚠️</span>
-                    <span>{regError}</span>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Nom de l’entreprise / Raison sociale <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={regCompanyName}
-                    onChange={e => setRegCompanyName(e.target.value)}
-                    placeholder="Ex: Confection Atlas SARL"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Nom & Prénom <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regFullName}
-                      onChange={e => setRegFullName(e.target.value)}
-                      placeholder="Ex: Tariq El Alami"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Email professionnel <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={regEmail}
-                      onChange={e => setRegEmail(e.target.value)}
-                      placeholder="contact@entreprise.ma"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Mot de passe <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={regPassword}
-                      onChange={e => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Ville <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={regCity}
-                      onChange={e => setRegCity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700 bg-white"
-                    >
-                      {MOROCCAN_CITIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Secteur d'activité <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={regSector}
-                    onChange={e => setRegSector(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700 bg-white"
-                  >
-                    {MOROCCAN_SECTORS.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Numéro de Téléphone / WhatsApp <span className="text-slate-400 font-normal">(facultatif)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={regPhone}
-                    onChange={e => setRegPhone(e.target.value)}
-                    placeholder="+212 6..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
-                  />
-                </div>
-
-                <div className="pt-3">
-                  <button
-                    type="submit"
-                    disabled={regLoading}
-                    className="w-full py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2 border border-emerald-900"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>{regLoading ? 'Création de votre compte...' : 'Démarrer Mon Bilan Carbone (0 MAD)'}</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-200" />
-                  </button>
-                </div>
-
-                <div className="text-[11px] text-slate-500 text-center pt-2">
-                  🔒 Données souveraines et déterministes hébergées au Maroc.
-                </div>
-              </form>
-            ) : (
+            {authTab === 'login' ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 {loginError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center space-x-2">
-                    <span className="font-bold">⚠️</span>
-                    <span>{loginError}</span>
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+                    {loginError}
                   </div>
                 )}
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Email professionnel
-                  </label>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email professionnel</label>
                   <input
                     type="email"
                     required
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
-                    placeholder="direction@entreprise.ma"
+                    placeholder="contact@entreprise.ma"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
                   />
                 </div>
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Mot de passe
-                  </label>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Mot de passe</label>
                   <input
                     type="password"
                     required
@@ -2598,17 +1268,83 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
                   />
                 </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>{loginLoading ? 'Connexion...' : 'Accéder à mon espace'}</span>
-                  </button>
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition disabled:opacity-50"
+                >
+                  {loginLoading ? 'Connexion en cours...' : 'Accéder à mon espace'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-4">
+                {regError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+                    {regError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom de l’entreprise</label>
+                  <input
+                    type="text"
+                    required
+                    value={regCompanyName}
+                    onChange={e => setRegCompanyName(e.target.value)}
+                    placeholder="Ex: Atlas Industrie SA"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Responsable</label>
+                  <input
+                    type="text"
+                    required
+                    value={regFullName}
+                    onChange={e => setRegFullName(e.target.value)}
+                    placeholder="Ex: Karim Bennani"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email professionnel</label>
+                  <input
+                    type="email"
+                    required
+                    value={regEmail}
+                    onChange={e => setRegEmail(e.target.value)}
+                    placeholder="k.bennani@entreprise.ma"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Mot de passe</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={regPassword}
+                    onChange={e => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Téléphone</label>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={e => setRegPhone(e.target.value)}
+                    placeholder="+212 6XX XX XX XX"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none focus:border-emerald-700"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={regLoading}
+                  className="w-full py-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition disabled:opacity-50"
+                >
+                  {regLoading ? 'Création en cours...' : 'Créer mon espace client'}
+                </button>
               </form>
             )}
           </div>

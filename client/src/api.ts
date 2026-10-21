@@ -406,6 +406,16 @@ export const api = {
       request<any>('/leads', {
         method: 'POST',
         body: JSON.stringify(data)
+      }),
+    meetingBooked: (leadId: string) =>
+      request<any>(`/leads/${leadId}/meeting-booked`, {
+        method: 'POST'
+      }),
+    list: () => request<{ leads: any[] }>('/admin/leads'),
+    updateStatus: (id: string, status: string, notes?: string) =>
+      request<any>(`/admin/leads/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, notes })
       })
   },
   units: {

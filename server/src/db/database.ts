@@ -255,7 +255,14 @@ export function initDatabaseSchema() {
       phone TEXT,
       company TEXT NOT NULL,
       sector TEXT,
+      city TEXT,
+      employee_count TEXT,
+      has_existing_bilan TEXT,
+      main_objective TEXT,
       message TEXT,
+      status TEXT NOT NULL DEFAULT 'Nouveau',
+      notes TEXT,
+      meeting_booked INTEGER DEFAULT 0,
       utm_source TEXT,
       created_at TEXT NOT NULL
     );
@@ -503,4 +510,11 @@ export function initDatabaseSchema() {
   safeAddCol('activity_records', 'evidence_uploaded_at TEXT');
   safeAddCol('activity_records', 'invoice_ref TEXT');
   safeAddCol('activity_records', 'supplier_name TEXT');
+  safeAddCol('leads', 'city TEXT');
+  safeAddCol('leads', 'employee_count TEXT');
+  safeAddCol('leads', 'has_existing_bilan TEXT');
+  safeAddCol('leads', 'main_objective TEXT');
+  safeAddCol('leads', "status TEXT NOT NULL DEFAULT 'Nouveau'");
+  safeAddCol('leads', 'notes TEXT');
+  safeAddCol('leads', 'meeting_booked INTEGER DEFAULT 0');
 }
