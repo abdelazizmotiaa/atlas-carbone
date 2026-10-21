@@ -372,38 +372,59 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
 
                   {/* Exemple clairement fictif */}
                   <div className="bg-emerald-50 border border-emerald-200/80 p-3 rounded-xl text-xs text-emerald-900">
-                    <span className="font-bold">Exemple fictif : </span>
+                    <span className="font-bold">Exemple de terrain : </span>
                     {lang === 'en' ? activeQuestion.example_fictif_en : activeQuestion.example_fictif_fr}
                   </div>
 
-                  {/* Assistant conversion facture en Dirhams (MAD) */}
-                  <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-3 text-xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 text-purple-950 font-bold">
-                        <Receipt className="w-4 h-4 text-purple-700" />
-                        <span>Vous avez une facture en Dirhams (ONEE, Gasoil, Gaz...) ?</span>
-                      </div>
+                  {/* Mode de saisie ergonomique : Direct Physique vs Facture en Dirhams */}
+                  <div className="space-y-4 pt-1">
+                    <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200">
                       <button
                         type="button"
-                        onClick={() => setShowBillHelper(!showBillHelper)}
-                        className="text-purple-700 hover:text-purple-900 font-semibold underline text-xs"
+                        onClick={() => setShowBillHelper(false)}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center space-x-1.5 ${
+                          !showBillHelper
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
                       >
-                        {showBillHelper ? 'Fermer l’assistant' : 'Convertir depuis une facture (MAD)'}
+                        <Calculator className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Quantité physique directe ({inputUnit})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowBillHelper(true)}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center space-x-1.5 ${
+                          showBillHelper
+                            ? 'bg-emerald-800 text-white shadow-sm'
+                            : 'text-emerald-900 hover:text-emerald-950'
+                        }`}
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Depuis facture en Dirhams (MAD)</span>
                       </button>
                     </div>
 
-                    {showBillHelper && (
-                      <div className="pt-2 border-t border-purple-200/80 space-y-3">
-                        <p className="text-slate-600 text-[11px]">
-                          Indiquez le montant de votre facture en Dirhams. L'application calcule immédiatement la quantité physique équivalente (kWh, litres, kg) selon les tarifs officiels marocains (ONEE, carburant, etc.).
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {showBillHelper ? (
+                      /* Saisie Assistée Facture en Dirhams (MAD) */
+                      <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 space-y-4 text-xs">
+                        <div className="flex items-start space-x-2 text-emerald-950 font-bold">
+                          <Receipt className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5" />
                           <div>
-                            <label className="block font-bold text-slate-700 mb-1 text-[11px]">Type de facture</label>
+                            <span>Conversion automatique Facture ONEE / Carburant en volume certifié</span>
+                            <p className="text-[11px] text-slate-600 font-normal mt-0.5">
+                              Saisissez le montant en Dirhams marocains. Atlas Carbone déduit la quantité physique correspondante selon les barèmes nationaux officiels.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1 text-[11px]">Type de facture / Barème national</label>
                             <select
                               value={helperPresetId}
                               onChange={e => setHelperPresetId(e.target.value)}
-                              className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-white text-xs"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white text-xs font-medium focus:border-emerald-600 outline-none"
                             >
                               {billPresets.map((p: any) => (
                                 <option key={p.id} value={p.id}>
@@ -413,14 +434,28 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                             </select>
                           </div>
                           <div>
-                            <label className="block font-bold text-slate-700 mb-1 text-[11px]">Montant en Dirhams (MAD)</label>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block font-bold text-slate-700 text-[11px]">Montant en Dirhams (MAD) *</label>
+                              <div className="flex space-x-1">
+                                {[5000, 15000, 50000].map(amt => (
+                                  <button
+                                    key={amt}
+                                    type="button"
+                                    onClick={() => setHelperAmountMad(amt.toString())}
+                                    className="px-1.5 py-0.5 bg-white border border-slate-200 text-slate-700 rounded text-[10px] font-mono hover:bg-slate-50"
+                                  >
+                                    {amt / 1000}k
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                             <input
                               type="number"
                               step="any"
-                              placeholder="Ex: 8500"
+                              placeholder="Ex: 15000"
                               value={helperAmountMad}
                               onChange={e => setHelperAmountMad(e.target.value)}
-                              className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg font-mono font-bold text-slate-900 bg-white text-xs"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold text-slate-900 bg-white text-xs focus:border-emerald-600 outline-none shadow-sm"
                             />
                           </div>
                         </div>
@@ -433,11 +468,14 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                           if (amt <= 0) return null;
 
                           return (
-                            <div className="bg-white p-2.5 rounded-lg border border-purple-200 flex items-center justify-between">
+                            <div className="bg-white p-3.5 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
                               <div>
-                                <span className="text-slate-500 text-[11px]">Quantité calculée : </span>
-                                <span className="font-mono font-bold text-purple-900 text-sm">
+                                <span className="text-slate-500 text-[11px]">Consommation physique équivalente : </span>
+                                <div className="font-mono font-black text-emerald-950 text-base">
                                   {derived.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} {p?.physicalUnit}
+                                </div>
+                                <span className="text-[10px] text-slate-400">
+                                  {amt.toLocaleString('fr-FR')} MAD ÷ {p.unitPriceMad} MAD/{p.physicalUnit}
                                 </span>
                               </div>
                               <button
@@ -446,21 +484,19 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                                   setInputQuantity(parseFloat(derived.toFixed(2)));
                                   if (p?.physicalUnit) setInputUnit(p.physicalUnit);
                                   if (p?.factorId) setSelectedFactorId(p.factorId);
-                                  setShowBillHelper(false);
                                 }}
-                                className="px-3 py-1 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-lg transition"
+                                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl transition shadow-sm flex items-center space-x-1.5"
                               >
-                                Insérer dans la quantité
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Valider cette quantité</span>
                               </button>
                             </div>
                           );
                         })()}
                       </div>
-                    )}
-                  </div>
+                    ) : null}
 
-                  {/* Champs de saisie physique */}
-                  <div className="space-y-4 pt-2">
+                    {/* Champs de saisie physique */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -472,7 +508,7 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                           value={inputQuantity}
                           onChange={(e) => setInputQuantity(e.target.value === '' ? '' : Number(e.target.value))}
                           placeholder={`ex: 15000`}
-                          className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-700 outline-none"
+                          className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-700 outline-none font-mono font-semibold text-slate-900 bg-white shadow-sm"
                         />
                       </div>
                       <div>
@@ -483,19 +519,19 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                           type="text"
                           readOnly
                           value={inputUnit}
-                          className="w-full px-3.5 py-2 text-xs border border-slate-200 bg-slate-100 text-slate-600 rounded-xl"
+                          className="w-full px-3.5 py-2.5 text-xs border border-slate-200 bg-slate-100 font-bold text-slate-700 rounded-xl"
                         />
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Activité correspondante / Barème officiel appliqué
+                        Activité correspondante / Barème officiel homologué
                       </label>
                       <select
                         value={selectedFactorId}
                         onChange={(e) => setSelectedFactorId(e.target.value)}
-                        className="w-full px-3.5 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-700 outline-none bg-white"
+                        className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-700 outline-none bg-white font-medium shadow-sm"
                       >
                         {catalogOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
@@ -503,35 +539,37 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                           </option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        🔒 Calcul certifié sur le serveur selon le barème officiel Bilan Carbone Maroc.
+                      <p className="text-[11px] text-slate-500 mt-1 flex items-center space-x-1">
+                        <Lock className="w-3 h-3 text-emerald-800 inline shrink-0" />
+                        <span>Calcul certifié déterministe sur le serveur selon le Bilan Carbone® Maroc.</span>
                       </p>
                     </div>
 
                     {calcError && (
-                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
                         {calcError}
                       </div>
                     )}
 
-                    {/* Actions de validation */}
-                    <div className="flex items-center justify-between pt-2">
+                    {/* Actions de validation avec distinction claire de l'inquantifié */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
                       <button
                         type="button"
                         onClick={() => {
                           setUnqLabel(activeQuestion.label_fr);
                           setShowUnqModal(true);
                         }}
-                        className="text-xs text-slate-500 hover:text-slate-800 underline"
+                        className="px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-semibold text-xs transition flex items-center justify-center space-x-1.5"
                       >
-                        Donnée non disponible ? Déclarer non quantifié
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Donnée non disponible ? Déclarer non quantifié</span>
                       </button>
 
                       <button
                         type="button"
                         disabled={calculating}
                         onClick={handleCalculateActivity}
-                        className="px-5 py-2.5 bg-brand-800 hover:bg-brand-900 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
+                        className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-1.5"
                       >
                         <Calculator className="w-4 h-4" />
                         <span>{calculating ? 'Calcul en cours...' : 'Calculer et valider'}</span>
@@ -563,7 +601,7 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                             {formatNumber(a.quantity, 2, lang)} {a.unit} • {a.factor_name}
                           </p>
                         </div>
-                        <div className="text-right font-mono font-bold text-brand-900">
+                        <div className="text-right font-mono font-bold text-emerald-900">
                           {formatNumber(a.emission_t_co2e, 3, lang)} tCO₂e
                         </div>
                       </div>
@@ -592,33 +630,71 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
 
             {/* Colonne droite : Synthèse en direct & Téléchargement du Rapport */}
             <div className="space-y-6">
-              {/* Carte Synthèse */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Résultats Préliminaires de l'Essai
-                </h4>
+              {/* Carte Synthèse & Complétude */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Synthèse de l'Évaluation
+                  </h4>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200">
+                    {activities.length} poste(s) actif(s)
+                  </span>
+                </div>
 
-                <div className="p-4 rounded-xl bg-brand-900 text-white space-y-1">
-                  <span className="text-[11px] text-brand-300 font-bold uppercase">Émissions Totales</span>
-                  <div className="text-2xl font-extrabold">
-                    {formatNumber(summary.totalTCO2e, 3, lang)} <span className="text-sm font-normal">tCO₂e</span>
+                {/* Jauge de Complétude Honnête */}
+                {(() => {
+                  const totalQuestions = currentProfile?.questions?.length || 5;
+                  const completedCount = activities.length + unquantified.length;
+                  const pct = Math.min(100, Math.round((completedCount / totalQuestions) * 100));
+
+                  return (
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-700">Complétude du Bilan</span>
+                        <span className="font-mono font-bold text-emerald-900">{pct}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
+                        <div
+                          className="bg-emerald-700 h-2 transition-all duration-500"
+                          style={{ width: `${Math.min(100, (activities.length / totalQuestions) * 100)}%` }}
+                          title={`${activities.length} quantifié(s)`}
+                        />
+                        <div
+                          className="bg-amber-400 h-2 transition-all duration-500"
+                          style={{ width: `${Math.min(100 - (activities.length / totalQuestions) * 100, (unquantified.length / totalQuestions) * 100)}%` }}
+                          title={`${unquantified.length} non quantifié(s)`}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>{activities.length} quantifié(s)</span>
+                        <span>{unquantified.length} sans facteur</span>
+                        <span>{Math.max(0, totalQuestions - completedCount)} restant(s)</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-900 to-teal-950 text-white space-y-1 shadow-sm">
+                  <span className="text-[11px] text-emerald-200 font-bold uppercase">Émissions Totales Déclarables</span>
+                  <div className="text-2xl font-extrabold text-white">
+                    {formatNumber(summary.totalTCO2e, 3, lang)} <span className="text-sm font-normal text-emerald-200">tCO₂e</span>
                   </div>
                   <p className="text-[10px] text-slate-300">
-                    Intervalle (95%) : [{formatNumber(summary.uncertaintyMinTCO2e, 2, lang)} ; {formatNumber(summary.uncertaintyMaxTCO2e, 2, lang)}] t
+                    Intervalle (95%) : [{formatNumber(summary.uncertaintyMinTCO2e, 2, lang)} ; {formatNumber(summary.uncertaintyMaxTCO2e, 2, lang)}] tCO₂e
                   </p>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between p-2 rounded-lg bg-slate-50">
+                  <div className="flex justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
                     <span className="text-slate-600">Scope 1 (Direct) :</span>
                     <span className="font-bold text-slate-900">{formatNumber(summary.scope1TCO2e, 3, lang)} t</span>
                   </div>
-                  <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                    <span className="text-slate-600">Scope 2 (Électricité) :</span>
+                  <div className="flex justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
+                    <span className="text-slate-600">Scope 2 (Électricité ONEE) :</span>
                     <span className="font-bold text-slate-900">{formatNumber(summary.scope2TCO2e, 3, lang)} t</span>
                   </div>
-                  <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                    <span className="text-slate-600">Scope 3 (Amont/Aval) :</span>
+                  <div className="flex justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
+                    <span className="text-slate-600">Scope 3 (Amont / Logistique) :</span>
                     <span className="font-bold text-slate-900">{formatNumber(summary.scope3TCO2e, 3, lang)} t</span>
                   </div>
                 </div>
@@ -629,13 +705,13 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                     href={api.trial.getPdfUrl(sessionId, lang)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
+                    className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
                   >
-                    <Download className="w-4 h-4" />
-                    <span>Télécharger le rapport préliminaire (PDF)</span>
+                    <Download className="w-4 h-4 text-emerald-200" />
+                    <span>Télécharger le Rapport Officiel (PDF)</span>
                   </a>
-                  <p className="text-[10px] text-slate-400 text-center mt-1">
-                    Généré côté serveur avec mentions d'incertitude et limites déclaratives.
+                  <p className="text-[10px] text-slate-400 text-center mt-1.5">
+                    Rapport bilingue avec mentions d'incertitude et postes non quantifiés.
                   </p>
                 </div>
 
@@ -643,13 +719,13 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                 <div className="pt-2 border-t border-slate-100">
                   <button
                     onClick={() => setShowClaimModal(true)}
-                    className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+                    className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs rounded-xl shadow-sm transition flex items-center justify-center space-x-2"
                   >
-                    <ShieldCheck className="w-4 h-4 text-slate-900" />
+                    <ShieldCheck className="w-4 h-4 text-slate-950" />
                     <span>Créer mon compte et conserver mon bilan</span>
                   </button>
                   <p className="text-[10px] text-slate-500 text-center mt-1.5">
-                    Garantie zéro ressaisie : vos {activities.length} activité(s) seront rattachées à votre espace entreprise.
+                    Garantie zéro ressaisie : vos données restent strictement confidentielles.
                   </p>
                 </div>
               </div>

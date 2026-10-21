@@ -314,10 +314,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowConverterModal(true)}
-            className="px-3.5 py-2 border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+            className="px-3.5 py-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
             title="Convertir une facture en Dirhams (MAD) ou convertir des unités (tonnes, kWh, m³...)"
           >
-            <Receipt className="w-4 h-4 text-purple-700" />
+            <Receipt className="w-4 h-4 text-emerald-700" />
             <span>Convertisseur Factures & Unités</span>
           </button>
 
@@ -342,7 +342,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           <button
             onClick={() => setShowAddModal(true)}
             disabled={isPeriodClosed}
-            className="px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5 disabled:opacity-50"
+            className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5 disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             <span>Nouvelle activité</span>
@@ -610,7 +610,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEntryMode('physical')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
                   entryMode === 'physical'
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
@@ -621,23 +621,23 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEntryMode('bill')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center space-x-1.5 ${
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center space-x-1.5 ${
                   entryMode === 'bill'
-                    ? 'bg-purple-700 text-white shadow-sm'
-                    : 'text-purple-700 hover:text-purple-900'
+                    ? 'bg-emerald-800 text-white shadow-sm'
+                    : 'text-emerald-900 hover:text-emerald-950'
                 }`}
               >
-                <Receipt className="w-3.5 h-3.5" />
-                <span>🧾 Depuis Facture en MAD (ONEE, Carburant...)</span>
+                <Receipt className="w-3.5 h-3.5 text-amber-300" />
+                <span>Depuis Facture en Dirhams (MAD)</span>
               </button>
             </div>
 
             {entryMode === 'bill' ? (
               /* Panneau de saisie depuis facture en Dirhams */
-              <div className="space-y-4 bg-purple-50/60 p-4 rounded-xl border border-purple-200 text-xs">
+              <div className="space-y-4 bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 text-xs">
                 <div className="flex items-start space-x-2">
-                  <Sparkles className="w-4 h-4 text-purple-700 mt-0.5 flex-shrink-0" />
-                  <p className="text-purple-900">
+                  <Sparkles className="w-4 h-4 text-emerald-700 mt-0.5 flex-shrink-0" />
+                  <p className="text-emerald-950 font-medium">
                     <strong>Comptabilité & Factures marocaines :</strong> Déduisez automatiquement la quantité physique (kWh, litres, tonnes) à partir du montant total en Dirhams (TTC ou HT) figurant sur vos factures d'électricité ONEE, carburant flotte ou gaz.
                   </p>
                 </div>
@@ -653,7 +653,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         setCustomUnitPrice(p.unitPriceMad.toString());
                       }
                     }}
-                    className="w-full px-3 py-2 border border-purple-300 rounded-lg bg-white font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white font-medium focus:border-emerald-600 outline-none"
                   >
                     {billPresets.map((p: any) => (
                       <option key={p.id} value={p.id}>
@@ -672,7 +672,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       placeholder="Ex: 15000"
                       value={billAmountMad}
                       onChange={e => setBillAmountMad(e.target.value)}
-                      className="w-full px-3 py-2 border border-purple-300 rounded-lg font-mono font-bold text-slate-900 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold text-slate-900 bg-white focus:border-emerald-600 outline-none"
                     />
                   </div>
                   <div>
@@ -685,7 +685,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                       placeholder="Tarif unitaire"
                       value={customUnitPrice || (billPresets.find((p: any) => p.id === billPresetId)?.unitPriceMad || '')}
                       onChange={e => setCustomUnitPrice(e.target.value)}
-                      className="w-full px-3 py-2 border border-purple-300 rounded-lg font-mono text-slate-900 bg-white"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-slate-900 bg-white focus:border-emerald-600 outline-none"
                     />
                   </div>
                 </div>
@@ -698,17 +698,17 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   const derivedQty = price > 0 ? amt / price : 0;
 
                   return (
-                    <div className="p-3 bg-white rounded-xl border border-purple-200 space-y-2">
+                    <div className="p-3 bg-white rounded-xl border border-emerald-200 space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500">Quantité physique déduite :</span>
-                        <span className="font-mono font-bold text-base text-purple-900">
+                        <span className="font-mono font-bold text-base text-emerald-950">
                           {derivedQty.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} {preset?.physicalUnit}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400">
                         Formule : {amt.toLocaleString('fr-FR')} MAD ÷ {price} MAD/{preset?.physicalUnit}
                       </div>
-                      <div className="text-[11px] text-purple-800 bg-purple-50 p-2 rounded border border-purple-100">
+                      <div className="text-[11px] text-emerald-900 bg-emerald-50 p-2 rounded border border-emerald-200">
                         Poste certifié assigné : <strong>[{preset?.factorId}] {preset?.name}</strong> (+5% marge d'incertitude traçable)
                       </div>
 
@@ -726,7 +726,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                             setFormNotes(`Dépense monétaire : Facture de ${amt} MAD convertie au tarif de ${price} MAD/${preset.physicalUnit} (+5% marge d'incertitude).`);
                             setEntryMode('physical');
                           }}
-                          className="px-4 py-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5"
+                          className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold rounded-xl shadow-sm transition flex items-center space-x-1.5"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>Appliquer ces valeurs au formulaire</span>
@@ -885,9 +885,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-brand-800 hover:bg-brand-900 text-white font-semibold rounded-xl shadow transition"
+                  className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
                 >
-                  Calculer et Enregistrer
+                  <Calculator className="w-4 h-4" />
+                  <span>Calculer et Enregistrer</span>
                 </button>
               </div>
             </form>
