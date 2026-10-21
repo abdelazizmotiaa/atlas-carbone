@@ -28,7 +28,14 @@ import {
   Car,
   Package,
   BadgeCheck,
-  Activity
+  Activity,
+  Receipt,
+  Landmark,
+  Coins,
+  Calendar,
+  Award,
+  Scale,
+  ScrollText
 } from 'lucide-react';
 import { api, setStoredToken, setStoredOrgId } from '../api.js';
 import { Language, translations } from '../i18n.js';
@@ -236,21 +243,41 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<MoroccanProductProfile>(MOROCCAN_PRODUCTS[0]);
 
   // Simulateur Déterministe Confidentiel (AUCUNE valeur de facteur divulguée)
+  const [simMode, setSimMode] = useState<'mad' | 'physical'>('mad');
+  const [simAmountMad, setSimAmountMad] = useState<number>(25000);
   const [simType, setSimType] = useState<'elec' | 'diesel' | 'gaz' | 'fret'>('elec');
-  const [simQty, setSimQty] = useState<number>(50000);
+  const [simQty, setSimQty] = useState<number>(20000);
   const [simDist, setSimDist] = useState<number>(300);
 
-  // Calcul 100% côté serveur de façon déterministe (constants conformes au classeur national sans affichage du facteur brut)
-  const calculateQuickSim = () => {
+  // Tarifs officiels marocains de référence (ONEE, Caisse de Compensation, Marché des Carburants)
+  const getDerivedQuantityFromMad = () => {
     switch (simType) {
       case 'elec':
-        return (simQty * 0.722) / 1000.0;
+        return simAmountMad / 1.15; // Tarif ONEE Moyenne Tension PME/Industrie (1,15 MAD/kWh HT)
       case 'diesel':
-        return (simQty * 3.16) / 1000.0;
+        return simAmountMad / 12.50; // Prix moyen national Gasoil à la pompe (12,50 MAD/L TTC)
       case 'gaz':
-        return (simQty * 0.256) / 1000.0;
+        return (simAmountMad / 50.0) * 12.0; // 50 MAD / bouteille de 12kg subventionnée = 4,17 MAD/kg
       case 'fret':
-        return (simQty * simDist * 0.10767) / 1000.0;
+        return simAmountMad / 25.0; // Barème indicatif transport routier marchandises
+      default:
+        return 0;
+    }
+  };
+
+  const calculateQuickSim = () => {
+    const qty = simMode === 'mad' ? getDerivedQuantityFromMad() : simQty;
+    switch (simType) {
+      case 'elec':
+        return (qty * 0.722) / 1000.0;
+      case 'diesel':
+        return (qty * 3.16) / 1000.0;
+      case 'gaz':
+        return (qty * 3.01) / 1000.0;
+      case 'fret':
+        return simMode === 'mad'
+          ? (qty * 200 * 0.10767) / 1000.0
+          : (qty * simDist * 0.10767) / 1000.0;
       default:
         return 0;
     }
@@ -325,33 +352,73 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
-      {/* Barre de navigation institutionnelle minimaliste */}
-      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
+      {/* BANDEAU INSTITUTIONNEL SOUVERAIN DU ROYAUME DU MAROC */}
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-950 to-emerald-950 border-b border-emerald-800/40 py-2 px-4 text-xs relative overflow-hidden">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 relative z-10">
+          <div className="flex items-center space-x-3">
+            <span className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-emerald-900/80 border border-emerald-600/60 text-amber-300 font-extrabold text-[11px] shadow-sm">
+              <span>🇲🇦</span>
+              <span className="tracking-widest font-serif">المملكة المغربية</span>
+            </span>
+            <span className="text-white font-extrabold uppercase tracking-wider text-[11px]">
+              ROYAUME DU MAROC
+            </span>
+            <span className="hidden sm:inline text-emerald-600 font-serif">•</span>
+            <span className="hidden sm:inline text-[11px] text-emerald-300 font-medium">
+              Système National de Comptabilité Carbone & Déclaration MACF
+            </span>
+          </div>
+          <div className="flex items-center space-x-3 text-[10px] text-slate-300 font-medium">
+            <span className="flex items-center space-x-1 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Norme ISO 14064-1</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="text-amber-300 font-semibold">Règlement MACF (UE) 2023/956</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-slate-300">Base Carbone Marocaine Homologuée</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Barre de navigation institutionnelle de style ministériel */}
+      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-emerald-900/40 shadow-xl shadow-slate-950/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div
             className="flex items-center space-x-3 cursor-pointer group"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/40 group-hover:scale-105 transition">
-              <Globe2 className="w-5 h-5 text-white" />
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-950 border border-amber-400/40 flex items-center justify-center shadow-lg shadow-emerald-950/50 group-hover:scale-105 transition relative overflow-hidden">
+              <div className="absolute inset-0 bg-zellig-subtle opacity-30"></div>
+              <Globe2 className="w-6 h-6 text-amber-300 relative z-10" />
             </div>
             <div>
-              <span className="text-xl font-extrabold tracking-tight text-white">
-                Atlas <span className="text-emerald-400">Carbone</span>
-              </span>
-              <span className="block text-[11px] text-slate-400 font-medium">
-                {lang === 'en' ? 'Moroccan Carbon Accounting & CBAM Platform' : 'Comptabilité Carbone & Conformité MACF Maroc'}
+              <div className="flex items-center space-x-2">
+                <span className="text-xl font-black tracking-tight text-white">
+                  Atlas <span className="text-emerald-400">Carbone</span>
+                </span>
+                <span className="text-xs font-serif text-amber-400/90 font-bold hidden sm:inline">أطلس كربون</span>
+              </div>
+              <span className="block text-[10px] text-emerald-300/80 font-medium tracking-wide">
+                {lang === 'en' ? 'Kingdom of Morocco • Sovereign Carbon Accounting Platform' : 'Royaume du Maroc • Plateforme Nationale de Comptabilité Carbone'}
               </span>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-7 text-xs font-semibold uppercase tracking-wider text-slate-300">
-            <a href="#produits-maroc" className="hover:text-emerald-400 transition flex items-center space-x-1">
-              <span>{lang === 'en' ? 'Moroccan Products' : 'Produits Marocains'}</span>
+          <nav className="hidden md:flex items-center space-x-5 text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <a href="#livrables" className="hover:text-emerald-400 transition text-amber-300 flex items-center space-x-1">
+              <span>{lang === 'en' ? 'Official Deliverables' : 'Livrables Officiels'}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            </a>
+            <a href="#produits-maroc" className="hover:text-emerald-400 transition">
+              {lang === 'en' ? 'Export Sectors' : 'Filières Export'}
+            </a>
+            <a href="#simulateur" className="hover:text-emerald-400 transition text-emerald-400 flex items-center space-x-1">
+              <span>{lang === 'en' ? 'MAD Bills Simulator' : 'Factures en MAD'}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             </a>
-            <a href="#solutions" className="hover:text-emerald-400 transition">
-              {lang === 'en' ? 'Sectors & CBAM' : 'Secteurs & MACF'}
+            <a href="#calendrier" className="hover:text-emerald-400 transition">
+              {lang === 'en' ? '2026-2030 Roadmap' : 'Cap 2026-2030'}
             </a>
             {onOpenAcademy && (
               <button onClick={onOpenAcademy} className="hover:text-emerald-400 transition flex items-center space-x-1">
@@ -359,16 +426,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">10 cours</span>
               </button>
             )}
-            {onOpenContent && (
-              <button onClick={() => onOpenContent('news')} className="hover:text-emerald-400 transition">
-                {lang === 'en' ? 'Regulatory Watch' : 'Veille 2026'}
-              </button>
-            )}
-            <a href="#simulateur" className="hover:text-emerald-400 transition">
-              {lang === 'en' ? 'Simulator' : 'Simulateur'}
+            <a href="#demo-accounts" className="hover:text-emerald-400 transition">
+              {lang === 'en' ? 'Demos' : 'Démos'}
             </a>
             <a href="#contact" className="hover:text-emerald-400 transition">
-              {lang === 'en' ? 'Contact' : 'Devis'}
+              {lang === 'en' ? 'Quote' : 'Devis'}
             </a>
           </nav>
 
@@ -389,7 +451,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             {onStartTrial && (
               <button
                 onClick={onStartTrial}
-                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold text-emerald-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-sm transition"
+                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold text-emerald-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 rounded-lg shadow-sm transition border border-emerald-300"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{lang === 'en' ? 'Try Without Account' : 'Essayer sans compte'}</span>
@@ -398,7 +460,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             <a
               href="#demo-accounts"
-              className="px-4 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg shadow-sm transition"
+              className="px-4 py-2 text-xs font-bold text-amber-200 bg-slate-900 hover:bg-slate-800 border border-amber-500/40 rounded-lg shadow-sm transition"
             >
               {lang === 'en' ? 'Company Space' : 'Espace Entreprise'}
             </a>
@@ -406,31 +468,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </header>
 
-      {/* Hero Section Minimaliste Institutionnelle */}
-      <section className="relative overflow-hidden pt-16 pb-24 border-b border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(16,185,129,0.15),rgba(255,255,255,0))] pointer-events-none"></div>
+      {/* Ligne de frise ornementale zellige */}
+      <div className="zellig-divider"></div>
 
+      {/* Hero Section Souveraine Marocaine avec Zellige Géométrique */}
+      <section className="relative overflow-hidden pt-16 pb-24 border-b border-emerald-900/40 bg-zellig-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Régime Définitif MACF 2026 & Norme ISO 14064-1</span>
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-950/90 border border-emerald-600/60 shadow-lg shadow-emerald-950/60 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                <span className="text-amber-400 text-sm">★</span>
+                <span>Régime Définitif MACF 2026 • Norme ISO 14064-1 • Barème National Maroc</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12]">
-                La comptabilité carbone <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">souveraine</span> des entreprises marocaines.
+                La plateforme <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300">souveraine</span> de mesure carbone des entreprises marocaines.
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                Mesurez l'empreinte carbone de votre entreprise simplement à partir de vos factures habituelles (ONEE, carburant, gaz). Obtenez instantanément vos bilans certifiés, vos graphiques et vos attestations officielles prêtes pour vos clients à l'export, vos banques et les douanes européennes (MACF).
+                De vos factures d'électricité ONEE et reçus de carburant jusqu'aux attestations d'exportation pour l'Union Européenne et les banques : mesurez, pilotez et valorisez la décarbonation de votre entreprise avec le barème national officiel sécurisé.
               </p>
 
               <div className="pt-3 flex flex-wrap gap-4">
                 {onStartTrial && (
                   <button
                     onClick={onStartTrial}
-                    className="inline-flex items-center space-x-2.5 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl shadow-lg shadow-emerald-950/60 transition group"
+                    className="inline-flex items-center space-x-2.5 px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold rounded-xl shadow-lg shadow-emerald-950/60 transition group border border-emerald-300"
                   >
                     <Sparkles className="w-4 h-4 text-slate-950" />
                     <span>{lang === 'en' ? 'Try Without Account (Guest Session)' : 'Essayer sans compte (Session invité)'}</span>
@@ -439,26 +502,30 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 )}
                 <a
                   href="#produits-maroc"
-                  className="inline-flex items-center space-x-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold rounded-xl transition"
+                  className="inline-flex items-center space-x-2 px-6 py-3.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-emerald-800/60 font-bold rounded-xl transition"
                 >
-                  <Package className="w-4 h-4 text-emerald-400" />
-                  <span>{lang === 'en' ? 'Explore Moroccan Products' : 'Explorer les Produits Marocains'}</span>
+                  <Package className="w-4 h-4 text-amber-400" />
+                  <span>{lang === 'en' ? 'Explore Moroccan Products' : 'Explorer les Filières Marocaines'}</span>
                 </a>
               </div>
 
-              {/* Garanties et Normes */}
-              <div className="pt-8 grid grid-cols-3 gap-4 border-t border-slate-800/80 text-slate-300">
-                <div className="flex items-center space-x-2.5">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span className="text-xs font-medium">ISO 14064-1 & GHG Protocol</span>
+              {/* 4 Piliers Souverains pour Dirigeants Marocains */}
+              <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-800/80 text-xs">
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                  <span className="font-bold text-emerald-400 block text-base font-mono">670+</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">Postes & Barèmes Nationaux</span>
                 </div>
-                <div className="flex items-center space-x-2.5">
-                  <Lock className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span className="text-xs font-medium">Facteurs Protégés & Confidentiels</span>
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                  <span className="font-bold text-amber-400 block text-base font-mono">100%</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">Calcul Serveur Sécurisé</span>
                 </div>
-                <div className="flex items-center space-x-2.5">
-                  <Globe2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span className="text-xs font-medium">MACF Règlement (UE) 2023/956</span>
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                  <span className="font-bold text-emerald-400 block text-base font-mono">0 MAD</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">Essai Gratuit PME Maroc</span>
+                </div>
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                  <span className="font-bold text-amber-400 block text-base font-mono">2026</span>
+                  <span className="text-[11px] text-slate-300 mt-0.5 block">Régime MACF Conforme</span>
                 </div>
               </div>
             </div>
@@ -604,6 +671,184 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
         </div>
       </section>
+
+      {/* SECTION DES 3 LIVRABLES OFFICIELS POUR L'ENTREPRISE MAROCAINE */}
+      <section id="livrables" className="py-24 bg-slate-950 border-b border-emerald-900/40 relative overflow-hidden">
+        {/* Motif d'arrière-plan zellige subtil */}
+        <div className="absolute inset-0 bg-zellig-subtle opacity-40 pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-14">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-600/50 text-amber-300 text-[11px] font-bold uppercase tracking-wider">
+              <span>🇲🇦</span>
+              <span>Livrables Stratégiques à Valeur Probante</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              {lang === 'en'
+                ? '3 Official Deliverables Moroccan Companies Truly Need'
+                : 'Les 3 Livrables Officiels Indispensables à Votre Entreprise'}
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              {lang === 'en'
+                ? 'Why do Moroccan executives choose Atlas Carbone from start to finish? Because every invoice and activity entered produces certified documents accepted by European customs, Moroccan banks, and auditor networks.'
+                : 'Pourquoi les chefs d’entreprise marocains utilisent Atlas Carbone jusqu’au bout ? Parce que chaque facture saisie alimente directement des dossiers réglementaires opposables aux banques, à l’Union Européenne et aux grands donneurs d’ordre.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Livrable 1 : Bilan ISO 14064-1 & Banques Marocaines */}
+            <div className="moroccan-arch-card p-8 flex flex-col justify-between space-y-6 relative group transition duration-300">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-950/60 group-hover:scale-105 transition">
+                    <Landmark className="w-6 h-6" />
+                  </div>
+                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60">
+                    Banques & Crédits Verts
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition">
+                    1. Rapport BEGES & Audit ISO 14064-1
+                  </h3>
+                  <p className="text-xs font-semibold text-emerald-400 mt-1 uppercase tracking-wide">
+                    Bank Al-Maghrib & Ligne Tamwilcom Croissance Verte
+                  </p>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {lang === 'en'
+                    ? 'A comprehensive greenhouse gas inventory covering Scopes 1, 2, and 3. Required by Moroccan commercial banks under Bank Al-Maghrib ESG climate directives and unlocks Tamwilcom green subsidies.'
+                    : 'Le bilan complet de vos émissions directes et indirectes (Scopes 1, 2, 3). Requis par les banques marocaines (Attijariwafa, BCP, BOA, CIH) pour les crédits verts et condition d’éligibilité aux subventions d’investissement Tamwilcom Tatwir (jusqu’à 30% d’aide).'}
+                </p>
+
+                <div className="pt-2 space-y-2 border-t border-emerald-900/40 text-[11px] text-slate-300">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Conforme aux critères ESG de Bank Al-Maghrib</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Atout décisif pour les Marchés Publics (Décret 2-22-431)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Rapport immuable scellé avec empreinte SHA-256</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-emerald-900/40">
+                <span className="text-[10px] font-mono text-amber-300/90 block">
+                  Format : PDF Institutionnel bilingue FR/EN prêt pour signature
+                </span>
+              </div>
+            </div>
+
+            {/* Livrable 2 : Fiche MACF / CBAM Union Européenne */}
+            <div className="moroccan-arch-card p-8 flex flex-col justify-between space-y-6 relative group transition duration-300">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-950/60 group-hover:scale-105 transition">
+                    <Scale className="w-6 h-6" />
+                  </div>
+                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-950 text-amber-300 border border-amber-700/60">
+                    Export Union Européenne
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition">
+                    2. Fiche de Déclaration MACF / CBAM
+                  </h3>
+                  <p className="text-xs font-semibold text-amber-400 mt-1 uppercase tracking-wide">
+                    Règlement Européen (UE) 2023/956 Régime 2026
+                  </p>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {lang === 'en'
+                    ? 'Structured declaration sheet for European customs and buyers. Computes direct and indirect embedded emissions for steel, fertilizers, cement, and aluminum to prevent punitive default tax rates.'
+                    : 'La fiche technique officielle requise par vos clients importateurs européens. Elle calcule avec exactitude les émissions intrinsèques de vos produits pour vous éviter la surtaxe forfaitaire punitive de l’UE.'}
+                </p>
+
+                <div className="pt-2 space-y-2 border-t border-amber-900/40 text-[11px] text-slate-300">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Décomposition par Code Douanier SH (Acier, Ciment, Engrais)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Facteur Électricité Réseau National ONEE homologué</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Prêt pour le Registre Transitoire & Définitif de l’UE</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-amber-900/40">
+                <span className="text-[10px] font-mono text-amber-300/90 block">
+                  Format : Tableau d’émissions intrinsèques prêt pour la douane UE
+                </span>
+              </div>
+            </div>
+
+            {/* Livrable 3 : Attestation Empreinte Produit & Scope 3 */}
+            <div className="moroccan-arch-card p-8 flex flex-col justify-between space-y-6 relative group transition duration-300">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shadow-lg shadow-teal-950/60 group-hover:scale-105 transition">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-teal-950 text-teal-300 border border-teal-700/60">
+                    Grandes Filières & Fournisseurs
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-amber-300 transition">
+                    3. Attestation Empreinte Produit
+                  </h3>
+                  <p className="text-xs font-semibold text-teal-400 mt-1 uppercase tracking-wide">
+                    Automobile, Aéronautique, Textile & Agro-alimentaire
+                  </p>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {lang === 'en'
+                    ? 'Certified product-level carbon certificate per physical unit (per kg of fruit, canned unit, or cable harness) designed for automotive OEM audits (Stellantis, Renault) and supermarket standards.'
+                    : 'Attestation chiffrée par unité vendue (par kilo de tomates, par boîte de conserve, par faisceau de câbles). Conçue sur-mesure pour les audits Scope 3 des constructeurs et de la grande distribution internationale.'}
+                </p>
+
+                <div className="pt-2 space-y-2 border-t border-teal-900/40 text-[11px] text-slate-300">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>Conforme aux cahiers des charges Renault & Stellantis</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>Justificatif Eco-Score Grande Distribution (Carrefour, Tesco)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>Traçabilité d’origine Maroc avec mix électrique décarboné</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-teal-900/40">
+                <span className="text-[10px] font-mono text-amber-300/90 block">
+                  Format : Certificat produit horodaté avec code d’attestation unique
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       {/* SECTION VEDETTE : THÈMES ET PRODUITS MAROCAINS (MACF, AGRICULTURE, INDUSTRIE) */}
       <section id="produits-maroc" className="py-24 bg-slate-900 border-b border-slate-800">
@@ -870,24 +1115,62 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </section>
 
-      {/* Simulateur Déterministe Confidentiel */}
-      <section id="simulateur" className="py-20 bg-slate-900 border-b border-slate-800">
+      {/* BOÎTE À OUTILS & SIMULATEUR FACTURES MAROCAINES EN DIRHAMS (MAD) */}
+      <section id="simulateur" className="py-24 bg-slate-900 border-b border-emerald-900/40 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <div className="text-center space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Simulateur Express Sans Engagement</span>
-            <h2 className="text-3xl font-extrabold text-white">Estimez une Facture ou Consommation en 1 Clic</h2>
-            <p className="text-sm text-slate-400">
-              Sélectionnez votre type de dépense courante et entrez votre volume. Atlas Carbone applique le barème officiel marocain certifié en toute sécurité.
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-600/50 text-amber-300 text-[11px] font-bold uppercase tracking-wider">
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>Simulateur Factures en Dirhams (MAD) & Unités Physiques</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              {lang === 'en'
+                ? 'Convert Your Moroccan Utility Bills into Certified Carbon Data'
+                : 'Convertissez vos Factures en Empreinte Carbone Réelle'}
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed max-w-2xl mx-auto">
+              {lang === 'en'
+                ? 'Select a routine expense and enter either your bill amount in Moroccan Dirhams (MAD) or direct physical volume. The certified Moroccan calculation runs securely on our servers.'
+                : 'Sélectionnez une dépense courante et saisissez directement le montant en Dirhams (MAD) de votre facture ONEE ou reçu gasoil. Notre moteur effectue la conversion énergétique et le calcul d’émissions homologué.'}
             </p>
           </div>
 
-          <div className="bg-slate-950 rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+          <div className="moroccan-arch-card p-6 sm:p-8 space-y-6">
+            {/* Basculeur de mode : Facture MAD vs Quantité physique */}
+            <div className="flex p-1 bg-slate-950 rounded-2xl border border-emerald-800/60 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => setSimMode('mad')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                  simMode === 'mad'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Coins className="w-3.5 h-3.5 text-amber-300" />
+                <span>Facture en Dirhams (MAD)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimMode('physical')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 ${
+                  simMode === 'physical'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Calculator className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Unités physiques (kWh, L...)</span>
+              </button>
+            </div>
+
+            {/* Type d'énergie / dépense */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { id: 'elec', label: 'Électricité ONEE', icon: Zap },
-                { id: 'diesel', label: 'Gasoil / Flotte', icon: Factory },
-                { id: 'gaz', label: 'Gaz / Chaudière', icon: TrendingDown },
-                { id: 'fret', label: 'Fret Routier Camions', icon: Globe2 }
+                { id: 'elec', label: 'Électricité ONEE', sub: 'Moyenne Tension', icon: Zap },
+                { id: 'diesel', label: 'Gasoil / Flotte', sub: 'Stations Afriquia/Shell', icon: Factory },
+                { id: 'gaz', label: 'Gaz Butane / Four', sub: 'Caisse Compensation', icon: TrendingDown },
+                { id: 'fret', label: 'Fret Routier TIR', sub: 'Transport Marchandises', icon: Globe2 }
               ].map(item => {
                 const Icon = item.icon;
                 const isSelected = simType === item.id;
@@ -895,91 +1178,305 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   <button
                     key={item.id}
                     onClick={() => setSimType(item.id as any)}
-                    className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center space-y-2 ${
+                    className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center space-y-1.5 ${
                       isSelected
-                        ? 'bg-slate-900 border-emerald-500 text-white font-bold'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold shadow-md shadow-emerald-950/50'
+                        : 'bg-slate-950/80 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-5 h-5 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`} />
                     <span className="text-xs">{item.label}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">{item.sub}</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  {simType === 'elec' && 'Consommation d’électricité (kWh)'}
-                  {simType === 'diesel' && 'Volume de carburant (litres de gasoil)'}
-                  {simType === 'gaz' && 'Énergie consommée (kWh)'}
-                  {simType === 'fret' && 'Masse transportée (tonnes)'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={simQty}
-                  onChange={e => setSimQty(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl focus:border-emerald-500 font-mono text-sm text-white outline-none"
-                />
-              </div>
+            {/* Formulaire de saisie dynamique */}
+            <div className="bg-slate-950/90 rounded-2xl p-5 border border-slate-800 space-y-4">
+              {simMode === 'mad' ? (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <label className="text-xs font-bold text-slate-200">
+                      Montant de la facture en Dirhams Marocains (MAD) :
+                    </label>
+                    {/* Boutons d'accès rapide */}
+                    <div className="flex items-center space-x-1.5">
+                      {[10000, 35000, 75000, 150000].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setSimAmountMad(val)}
+                          className={`px-2.5 py-1 text-[10px] font-mono rounded-lg border transition ${
+                            simAmountMad === val
+                              ? 'bg-emerald-900 text-amber-300 border-amber-400/50 font-bold'
+                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          {val.toLocaleString('fr-FR')} DH
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {simType === 'fret' ? (
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Distance parcourue (km)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={simDist}
-                    onChange={e => setSimDist(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl focus:border-emerald-500 font-mono text-sm text-white outline-none"
-                  />
-                </div>
-              ) : (
-                <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-xs space-y-1">
-                  <div className="text-slate-400 font-medium">Barème officiel appliqué :</div>
-                  <div className="font-bold text-white flex items-center space-x-1.5">
-                    <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>
-                      {simType === 'elec' && 'Mix Électrique Réseau National ONEE (Bilan Carbone®)'}
-                      {simType === 'diesel' && 'Carburant Flotte Routière (Base Carbone Maroc)'}
-                      {simType === 'gaz' && 'Gaz Naturel Vapeur & Industrie (Certifié)'}
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      value={simAmountMad}
+                      onChange={e => setSimAmountMad(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-slate-900 border border-emerald-800/60 rounded-xl focus:border-amber-400 font-mono text-base text-white outline-none pl-11"
+                    />
+                    <Coins className="w-5 h-5 text-amber-400 absolute left-3.5 top-3.5" />
+                    <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">
+                      MAD (Dirhams)
                     </span>
                   </div>
-                  <div className="text-emerald-400 text-[11px]">🔒 Calcul officiel sur le serveur — Formules protégées</div>
+
+                  {/* Explication pédagogique de la conversion marocaine */}
+                  <div className="p-3.5 bg-emerald-950/40 rounded-xl border border-emerald-800/40 text-xs space-y-1.5">
+                    <div className="flex items-center space-x-2 text-amber-300 font-bold text-[11px] uppercase tracking-wide">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Barème tarifaire national marocain de référence :</span>
+                    </div>
+                    <p className="text-slate-300 leading-relaxed text-[11px]">
+                      {simType === 'elec' && (
+                        <>
+                          Tarif ONEE Moyenne Tension PME/Industrie : <strong>1,15 MAD HT / kWh</strong>. Votre facture de{' '}
+                          <strong>{simAmountMad.toLocaleString('fr-FR')} MAD</strong> correspond à environ{' '}
+                          <strong className="text-emerald-400 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} kWh</strong>.
+                        </>
+                      )}
+                      {simType === 'diesel' && (
+                        <>
+                          Gasoil pompes nationales : <strong>12,50 MAD TTC / Litre</strong>. Votre dépense de{' '}
+                          <strong>{simAmountMad.toLocaleString('fr-FR')} MAD</strong> correspond à environ{' '}
+                          <strong className="text-emerald-400 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} Litres</strong> de gasoil routier.
+                        </>
+                      )}
+                      {simType === 'gaz' && (
+                        <>
+                          Gaz Butane (Caisse de Compensation) : <strong>50 MAD la bonbonne de 12 kg</strong> (soit 4,17 MAD/kg). Votre facture correspond à environ{' '}
+                          <strong className="text-emerald-400 font-mono">{Math.round(getDerivedQuantityFromMad()).toLocaleString('fr-FR')} kg</strong> de gaz liquéfié.
+                        </>
+                      )}
+                      {simType === 'fret' && (
+                        <>
+                          Barème transport routier marchandises : estimation indicative basée sur une distance interurbaine moyenne de 200 km.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      {simType === 'elec' && 'Consommation d’électricité (kWh)'}
+                      {simType === 'diesel' && 'Volume de carburant (litres de gasoil)'}
+                      {simType === 'gaz' && 'Énergie consommée (kWh)'}
+                      {simType === 'fret' && 'Masse transportée (tonnes)'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={simQty}
+                      onChange={e => setSimQty(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl focus:border-emerald-500 font-mono text-sm text-white outline-none"
+                    />
+                  </div>
+
+                  {simType === 'fret' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Distance parcourue (km)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={simDist}
+                        onChange={e => setSimDist(Number(e.target.value))}
+                        className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl focus:border-emerald-500 font-mono text-sm text-white outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-xs space-y-1">
+                      <div className="text-slate-400 font-medium">Barème officiel appliqué :</div>
+                      <div className="font-bold text-white flex items-center space-x-1.5">
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>
+                          {simType === 'elec' && 'Mix Électrique Réseau National ONEE'}
+                          {simType === 'diesel' && 'Carburant Flotte Routière Maroc'}
+                          {simType === 'gaz' && 'Gaz Vapeur & Industrie Certifié'}
+                        </span>
+                      </div>
+                      <div className="text-emerald-400 text-[11px]">🔒 Calcul officiel sur le serveur — Formules protégées</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Empreinte Carbone Calculée</span>
-                <div className="text-3xl font-black text-white mt-1">
-                  {calculateQuickSim().toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                  <span className="text-lg font-normal text-slate-400">tCO2e</span>
-                </div>
-                <span className="text-xs text-emerald-400 mt-1 block">
-                  Soit {(calculateQuickSim() * 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kgCO2e
+            {/* Carte de Résultat Officiel et Équivalence Terrestre Marocaine */}
+            <div className="bg-gradient-to-br from-slate-900 to-emerald-950/70 rounded-2xl p-6 border border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center space-x-1.5">
+                  <BadgeCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Empreinte Carbone Calculée Certifiée</span>
                 </span>
+                <div className="text-3xl sm:text-4xl font-black text-white">
+                  {calculateQuickSim().toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                  <span className="text-lg font-normal text-slate-300">tCO2e</span>
+                </div>
+                <div className="text-xs text-emerald-300 font-medium">
+                  Soit <strong>{(calculateQuickSim() * 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kgCO2e</strong> déclarables.
+                </div>
+                <div className="text-[11px] text-slate-400 pt-1">
+                  Équivaut à la séquestration annuelle d’environ{' '}
+                  <strong className="text-amber-300 font-mono">{Math.round((calculateQuickSim() * 1000) / 25)} arganiers / cèdres</strong> de l'Atlas marocain.
+                </div>
               </div>
-              <a
-                href="#demo-accounts"
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition"
-              >
-                Créer mon Bilan Complet Gratuit
-              </a>
+
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                {onStartTrial && (
+                  <button
+                    onClick={onStartTrial}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-950/60 transition flex items-center justify-center space-x-2 border border-emerald-300"
+                  >
+                    <Sparkles className="w-4 h-4 text-slate-950" />
+                    <span>Enregistrer dans mon Bilan</span>
+                  </button>
+                )}
+                <a
+                  href="#demo-accounts"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs rounded-xl border border-slate-700 text-center transition"
+                >
+                  Voir les Espaces Démo Prêts
+                </a>
+              </div>
             </div>
 
-            <div className="text-[11px] text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>
-                Atlas Carbone conserve la confidentialité des facteurs pour vous garantir des calculs conformes aux audits : revenez à chaque facture pour enrichir votre inventaire d'entreprise.
+            {/* Note de confidentialité souveraine */}
+            <div className="text-[11px] text-slate-400 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80 flex items-start space-x-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">
+                <strong>Confidentialité garantie :</strong> Atlas Carbone effectue tous les calculs déterministes sur ses serveurs sécurisés sans divulguer les formules internes. Vos données de facturation restent strictement confinées à votre entreprise.
               </span>
             </div>
           </div>
         </div>
       </section>
+
+      {/* SECTION DU CALENDRIER RÉGLEMENTAIRE & FINANCEMENT VERT DU ROYAUME (2026 - 2030) */}
+      <section id="calendrier" className="py-24 bg-slate-950 border-b border-emerald-900/40 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-600/50 text-amber-300 text-[11px] font-bold uppercase tracking-wider">
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>Cap 2026 - 2030 • Vision Stratégique du Royaume</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              {lang === 'en'
+                ? 'Moroccan Green Regulatory & Banking Roadmap (2026 - 2030)'
+                : 'Calendrier Réglementaire & Financement Vert (2026 - 2030)'}
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              {lang === 'en'
+                ? 'Anticipate deadlines: from European carbon border tax enforcement to Moroccan green credit regulations and the 2030 sustainable FIFA World Cup.'
+                : 'Pourquoi les entreprises marocaines doivent structurer leur bilan dès maintenant ? Voici les échéances incontournables qui s’imposent à l’économie nationale.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Jalon 1: 2026 */}
+            <div className="moroccan-arch-card p-6 flex flex-col justify-between space-y-4 relative">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-black text-amber-400 font-mono">2026</span>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                    Échéance Immédiate
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white">
+                  Taxe Carbone Européenne (Régime Définitif MACF)
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Fin du simple reporting déclaratif. Les exportateurs marocains d'acier, d'aluminium, de ciment et d'engrais doivent fournir leurs émissions réelles sous peine de surtaxes douanières maximales à l'entrée de l'UE.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-emerald-900/40 text-[11px] text-emerald-400 font-semibold flex items-center space-x-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Module MACF Atlas Carbone prêt</span>
+              </div>
+            </div>
+
+            {/* Jalon 2: 2026-2027 */}
+            <div className="moroccan-arch-card p-6 flex flex-col justify-between space-y-4 relative">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-black text-emerald-400 font-mono">2026/27</span>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    Système Bancaire
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white">
+                  Directive Climat Bank Al-Maghrib & Crédits Verts
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Les banques commerciales marocaines conditionnent les taux d'intérêt et l'octroi des crédits d'investissement à l'évaluation du risque climatique et à la production d'un Bilan Carbone conforme ISO 14064.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-emerald-900/40 text-[11px] text-amber-300 font-semibold flex items-center space-x-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Rapports compatibles Banques & Tamwilcom</span>
+              </div>
+            </div>
+
+            {/* Jalon 3: 2028 */}
+            <div className="moroccan-arch-card p-6 flex flex-col justify-between space-y-4 relative">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-black text-teal-400 font-mono">2028</span>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-teal-950 text-teal-300 border border-teal-800">
+                    Marchés Publics
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white">
+                  Éco-Conditionnalité de la Commande Publique
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Application généralisée du Décret sur les marchés publics marocains. Les appels d'offres de l'État et des entreprises publiques accordent des bonifications de points aux entreprises ayant quantifié leur empreinte.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-emerald-900/40 text-[11px] text-teal-400 font-semibold flex items-center space-x-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Attestations probantes pour appels d’offres</span>
+              </div>
+            </div>
+
+            {/* Jalon 4: 2030 */}
+            <div className="moroccan-arch-card p-6 flex flex-col justify-between space-y-4 relative">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-black text-amber-300 font-mono">2030</span>
+                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                    Cap Mondial 2030
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white">
+                  Engagement NDC Maroc (-45,5%) & Coupe du Monde
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Objectif climatique national du Royaume du Maroc et organisation conjointe de la Coupe du Monde FIFA 2030 bas-carbone. Les prestataires et sous-traitants doivent prouver leur trajectoire de décarbonation.
+                </p>
+              </div>
+              <div className="pt-3 border-t border-emerald-900/40 text-[11px] text-amber-300 font-semibold flex items-center space-x-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Trajectoires pluriannuelles certifiées</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       {/* Formulaire de Contact & Devis Officiel */}
       <section id="contact" className="py-24 bg-slate-950 border-b border-slate-800">
