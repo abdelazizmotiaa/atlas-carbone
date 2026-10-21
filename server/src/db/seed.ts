@@ -7,11 +7,13 @@ import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, initDatabaseSchema } from './database.js';
+import { runContentSeeds } from './seedContent.js';
 import { calculateEmission, calculateCBAMSpecificEmbeddedEmissions, EmissionFactorInput } from '../core/calculations.js';
 
 export function runSeeds() {
   console.log("--> Initialisation du schéma de la base de données...");
   initDatabaseSchema();
+  runContentSeeds();
 
   // 1. Charger le catalogue de facteurs d'émissions
   const factorCountStmt = db.prepare('SELECT COUNT(*) as count FROM emission_factors');

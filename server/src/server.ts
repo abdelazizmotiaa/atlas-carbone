@@ -14,6 +14,11 @@ import {
   calculateCBAMSpecificEmbeddedEmissions,
   EmissionFactorInput
 } from './core/calculations.js';
+import { generateReportPdf, ReportPdfData } from './core/pdfReport.js';
+import { trialRouter } from './modules/trial.js';
+import { contentRouter } from './modules/content.js';
+import { assistantRouter } from './modules/assistant.js';
+import { SECTOR_PROFILES } from './modules/sectors.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +26,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'atlas_carbone_secret_key_2026_maro
 
 app.use(cors());
 app.use(express.json());
+
+// Sous-routeurs métier
+app.use('/api/trial', trialRouter);
+app.use('/api', contentRouter);
+app.use('/api/assistant', assistantRouter);
 
 // Initialiser et vérifier le seed au démarrage
 runSeeds();
@@ -284,6 +294,10 @@ app.get('/api/organizations/:orgId/overview', authenticateToken, requireTenant, 
       biogenicTCO2e: biogenicKg / 1000.0,
       totalActivitiesCount: activities.length
     },
+    total_tco2e: (scope1Kg + scope2Kg + scope3Kg) / 1000.0,
+    scope1_tco2e: scope1Kg / 1000.0,
+    scope2_tco2e: scope2Kg / 1000.0,
+    scope3_tco2e: scope3Kg / 1000.0,
     byScope: [
       { scope: 1, label: 'Scope 1 (Émissions directes)', tco2e: scope1Kg / 1000.0 },
       { scope: 2, label: 'Scope 2 (Électricité & Énergie indirecte)', tco2e: scope2Kg / 1000.0 },
@@ -427,14 +441,14 @@ app.get('/api/organizations/:orgId/activities', authenticateToken, requireTenant
 
 app.post('/api/organizations/:orgId/activities', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'site_manager', 'contributor']), (req, res) => {
   const orgId = req.organizationId!;
+  const reporting_period_id = req.body.reporting_period_id || req.body.periodId;
+  const site_id = req.body.site_id || req.body.siteId;
+  const factor_id = req.body.factor_id || req.body.factorId;
   const {
-    reporting_period_id,
-    site_id,
     category,
     label,
     quantity,
     unit,
-    factor_id,
     invoice_ref,
     supplier_name,
     notes,
@@ -522,6 +536,23 @@ app.post('/api/organizations/:orgId/activities', authenticateToken, requireTenan
   }
 });
 
+app.put('/api/organizations/:orgId/activities/:activityId', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'site_manager']), (req, res) => {
+  const { activityId } = req.params;
+  const orgId = req.organizationId!;
+
+  const act: any = db.prepare('SELECT a.*, p.status as period_status FROM activity_records a JOIN reporting_periods p ON a.reporting_period_id = p.id WHERE a.id = ? AND a.organization_id = ?').get(activityId, orgId);
+  if (!act) return res.status(404).json({ error: "Activité introuvable." });
+  if (act.period_status === 'closed') {
+    return res.status(403).json({ error: "Interdit : l'activité appartient à un inventaire clôturé et immuable." });
+  }
+
+  const { quantity, notes } = req.body;
+  if (quantity !== undefined) {
+    db.prepare('UPDATE activity_records SET quantity = ? WHERE id = ?').run(Number(quantity), activityId);
+  }
+  res.json({ message: "Activité mise à jour avec succès." });
+});
+
 app.delete('/api/organizations/:orgId/activities/:activityId', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
   const { activityId } = req.params;
   const orgId = req.organizationId!;
@@ -538,10 +569,17 @@ app.delete('/api/organizations/:orgId/activities/:activityId', authenticateToken
 });
 
 // -------------------------------------------------------------
-// 6. Catalogue des Facteurs d'Émission
+// 6. Catalogue des Facteurs d'Émission (Protégé & Confidentiel)
 // -------------------------------------------------------------
 
+// 6.a Catalogue brut complet : Strictement réservé au rôle super_admin
 app.get('/api/factors', authenticateToken, (req, res) => {
+  if (!req.user?.is_superadmin) {
+    return res.status(403).json({
+      error: "Accès refusé : la consultation directe du catalogue brut des facteurs d'émission est strictement réservée à l'administration de la plateforme. Pour saisir vos activités, utilisez le sélecteur guidé (/api/activities/catalog-options) qui garantit la traçabilité sans exposer les pondérations internes."
+    });
+  }
+
   const search = req.query.q as string;
   const scope = req.query.scope as string;
   const category = req.query.category as string;
@@ -567,9 +605,263 @@ app.get('/api/factors', authenticateToken, (req, res) => {
     params.push(status);
   }
 
-  query += ' ORDER BY scope ASC, name ASC LIMIT 200';
+  query += ' ORDER BY scope ASC, name ASC LIMIT 300';
   const factors = db.prepare(query).all(...params);
   res.json(factors);
+});
+
+// 6.b Sélecteur d'Options d'Activités Sécurisé (Tenants & Invités d'Essai)
+// Ne retourne QUE les métadonnées de saisie sans jamais divulguer les facteurs numériques ni pondérations internes !
+app.get('/api/activities/catalog-options', (req, res) => {
+  const category = req.query.category as string;
+  const scope = req.query.scope as string;
+  const search = req.query.q as string;
+
+  let query = "SELECT id, name as label, category, scope, denominator_unit as expected_unit, perimeter, geography, status FROM emission_factors WHERE status != 'rejected'";
+  const params: any[] = [];
+
+  if (category) {
+    query += ' AND category = ?';
+    params.push(category);
+  }
+  if (scope) {
+    query += ' AND scope = ?';
+    params.push(Number(scope));
+  }
+  if (search) {
+    query += ' AND name LIKE ?';
+    params.push(`%${search}%`);
+  }
+
+  query += ' ORDER BY scope ASC, name ASC LIMIT 150';
+  const options = db.prepare(query).all(...params);
+  res.json(options);
+});
+
+// 6.c Référentiel des 8 Profils Sectoriels Marocains
+app.get(['/api/sector-questionnaires', '/api/sectors', '/api/trial/sectors'], (req, res) => {
+  res.json(SECTOR_PROFILES);
+});
+
+// 6.d Annexe Méthodologique à Accès Contrôlé (Limité aux seuls facteurs mobilisés)
+app.get('/api/organizations/:orgId/periods/:periodId/methodological-annex', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'auditor']), (req, res) => {
+  const { periodId } = req.params;
+  const orgId = req.organizationId!;
+
+  const factors: any[] = db.prepare(`
+    SELECT DISTINCT f.id, f.name, f.category, f.scope, f.denominator_unit, f.geography, f.reference_year, f.source, f.perimeter, f.uncertainty_pct
+    FROM activity_records a
+    JOIN emission_factors f ON a.factor_id = f.id
+    WHERE a.reporting_period_id = ? AND a.organization_id = ?
+    ORDER BY f.scope ASC, f.name ASC
+  `).all(periodId, orgId);
+
+  res.json({
+    reportingPeriodId: periodId,
+    factorsMobilizedCount: factors.length,
+    factors,
+    attribution: "Source de référence : Classeur Bilan Carbone Maroc (ADEME / ABC / Fondation Mohammed VI pour la Protection de l'Environnement / AMEE)",
+    limitationNotice: "Note méthodologique : Lorsqu'une quantité physique et son résultat d'émissions sont connus, un facteur simple peut être déduit arithmétiquement. La protection du catalogue vise la confidentialité de la base globale et ne constitue pas un secret mathématique absolu."
+  });
+});
+
+// 6.e Postes identifiés, non quantifiés (Règle de rigueur : pas de faux zéro)
+app.get('/api/organizations/:orgId/activities/unquantified', authenticateToken, requireTenant, (req, res) => {
+  const periodId = (req.query.periodId || req.query.reporting_period_id) as string;
+  let query = 'SELECT * FROM unquantified_activities WHERE organization_id = ?';
+  const params: any[] = [req.organizationId!];
+  if (periodId) {
+    query += ' AND reporting_period_id = ?';
+    params.push(periodId);
+  }
+  query += ' ORDER BY created_at DESC';
+  const items = db.prepare(query).all(...params);
+  res.json(items);
+});
+
+app.post('/api/organizations/:orgId/activities/unquantified', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'site_manager', 'contributor']), (req, res) => {
+  const reporting_period_id = req.body.reporting_period_id || req.body.periodId;
+  const { site_id, category, label, reason, notes } = req.body;
+  if (!reporting_period_id || !category || !label) {
+    return res.status(400).json({ error: "Champs obligatoires manquants (reporting_period_id, category, label)." });
+  }
+
+  const id = `unq-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+  db.prepare(`
+    INSERT INTO unquantified_activities (id, reporting_period_id, organization_id, site_id, category, label, reason, notes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, reporting_period_id, req.organizationId!, site_id || null, category, label, reason || 'Poste identifié, non quantifié : facteur disponible insuffisant', notes || '', new Date().toISOString());
+
+  logAudit(req.organizationId!, req.user!.id, 'CREATE_UNQUANTIFIED_ACTIVITY', 'unquantified_activities', id, { label, category, reason });
+  res.status(201).json({ id, message: "Activité non quantifiée enregistrée avec motif explicite (aucun zéro factice n'est affecté)." });
+});
+
+// 6.f Génération du Rapport PDF Officiel Côté Serveur
+app.get('/api/organizations/:orgId/periods/:periodId/pdf', authenticateToken, requireTenant, async (req, res) => {
+  const { orgId, periodId } = req.params;
+  const lang = (req.query.lang === 'en' ? 'en' : 'fr') as 'fr' | 'en';
+
+  const org: any = db.prepare('SELECT * FROM organizations WHERE id = ?').get(orgId);
+  const period: any = db.prepare('SELECT * FROM reporting_periods WHERE id = ? AND organization_id = ?').get(periodId, orgId);
+  if (!org || !period) return res.status(404).json({ error: "Organisation ou exercice introuvable." });
+
+  const activities: any[] = db.prepare(`
+    SELECT a.*, f.name as factor_name, f.source as factor_source
+    FROM activity_records a
+    LEFT JOIN emission_factors f ON a.factor_id = f.id
+    WHERE a.reporting_period_id = ? AND a.organization_id = ? AND a.status = 'active'
+    ORDER BY a.scope ASC, a.created_at ASC
+  `).all(periodId, orgId);
+
+  const unquantified: any[] = db.prepare(`
+    SELECT * FROM unquantified_activities
+    WHERE reporting_period_id = ? AND organization_id = ?
+    ORDER BY created_at ASC
+  `).all(periodId, orgId);
+
+  const actions: any[] = db.prepare(`
+    SELECT * FROM reduction_actions
+    WHERE organization_id = ?
+    ORDER BY target_year ASC
+  `).all(orgId);
+
+  let s1 = 0, s2 = 0, s3 = 0, bio = 0;
+  const uncItems: any[] = [];
+  for (const a of activities) {
+    if (a.is_biogenic) bio += a.emission_kg_co2e;
+    else {
+      if (a.scope === 1) s1 += a.emission_kg_co2e;
+      else if (a.scope === 2) s2 += a.emission_kg_co2e;
+      else if (a.scope === 3) s3 += a.emission_kg_co2e;
+    }
+    uncItems.push({
+      emissionKgCO2e: a.emission_kg_co2e,
+      uncertaintyAbsoluteKg: a.uncertainty_absolute_kg || (a.emission_kg_co2e * 0.20)
+    });
+  }
+
+  const uncAgg = aggregateUncertainty(uncItems);
+
+  const pdfData: ReportPdfData = {
+    companyName: org.name,
+    city: org.city || 'Maroc',
+    ice: org.ice || '',
+    sector: org.sector || 'Général',
+    periodYear: period.year,
+    consolidationApproach: period.consolidation_approach || 'operational_control',
+    isPreliminary: period.status !== 'closed',
+    status: period.status === 'closed'
+      ? (lang === 'en' ? 'Locked / Final' : 'Clôturé & Immuable')
+      : (lang === 'en' ? 'Draft in progress' : 'Brouillon en cours'),
+    generatedDate: new Date().toISOString().split('T')[0],
+    summary: {
+      totalTCO2e: (s1 + s2 + s3) / 1000.0,
+      scope1TCO2e: s1 / 1000.0,
+      scope2TCO2e: s2 / 1000.0,
+      scope3TCO2e: s3 / 1000.0,
+      biogenicTCO2e: bio / 1000.0,
+      uncertaintyMinTCO2e: uncAgg.confidenceInterval95Kg.min / 1000.0,
+      uncertaintyMaxTCO2e: uncAgg.confidenceInterval95Kg.max / 1000.0,
+      uncertaintyPct: uncAgg.uncertaintyRelativePct
+    },
+    activities: activities.map(a => ({
+      category: a.category,
+      scope: a.scope,
+      label: a.label,
+      quantity: a.quantity,
+      unit: a.unit,
+      emissionTCO2e: a.emission_t_co2e,
+      factorName: a.factor_name,
+      factorSource: a.factor_source
+    })),
+    unquantified: unquantified.map(u => ({
+      category: u.category,
+      label: u.label,
+      reason: u.reason,
+      notes: u.notes
+    })),
+    reductionActions: actions.map(act => ({
+      title: act.title,
+      category: act.category,
+      responsible: act.responsible,
+      targetYear: act.target_year,
+      savingsTCO2e: act.annual_savings_tco2e
+    }))
+  };
+
+  try {
+    const pdfBuffer = await generateReportPdf(pdfData, lang);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Rapport_GES_${org.name.replace(/[^a-zA-Z0-9]/g, '_')}_${period.year}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err: any) {
+    res.status(500).json({ error: "Erreur lors de la génération du rapport PDF: " + err.message });
+  }
+});
+
+// 6.g Gouvernance, Cycle de Revue et États d'Inventaire
+app.get('/api/organizations/:orgId/periods/:periodId/reviews', authenticateToken, requireTenant, (req, res) => {
+  const reviews = db.prepare('SELECT * FROM dossier_reviews WHERE reporting_period_id = ? ORDER BY created_at DESC').all(req.params.periodId);
+  res.json(reviews);
+});
+
+app.post('/api/organizations/:orgId/periods/:periodId/reviews', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'auditor']), (req, res) => {
+  const { periodId } = req.params;
+  const { status, comment } = req.body;
+  const allowed = ['draft', 'to_complete', 'ready_for_review', 'reviewed_internal', 'locked'];
+
+  if (!status || !allowed.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Statuts autorisés : ${allowed.join(', ')}` });
+  }
+
+  const id = `rev-${Date.now()}`;
+  db.prepare(`
+    INSERT INTO dossier_reviews (id, reporting_period_id, reviewer_id, reviewer_name, status, comment, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, periodId, req.user!.id, req.user!.full_name, status, comment || '', new Date().toISOString());
+
+  // Mettre à jour le statut dans reporting_periods
+  db.prepare('UPDATE reporting_periods SET status = ? WHERE id = ?').run(status, periodId);
+  logAudit(req.organizationId!, req.user!.id, 'UPDATE_DOSSIER_STATE', 'reporting_periods', periodId, { status, comment });
+
+  res.status(201).json({ id, status, comment });
+});
+
+// 6.h Robots.txt et Sitemap.xml pour le référencement naturel
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`User-agent: *
+Allow: /
+Allow: /fr/
+Allow: /en/
+Disallow: /api/
+Disallow: /activities
+Disallow: /report
+Disallow: /dashboard
+Disallow: /cbam
+Sitemap: http://localhost:5000/sitemap.xml
+`);
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  const baseUrl = 'http://localhost:5000';
+  const routes = [
+    '/fr/', '/en/',
+    '/fr/solutions-sectorielles', '/en/sector-solutions',
+    '/fr/methodologie', '/en/methodology',
+    '/fr/macf-cbam', '/en/cbam',
+    '/fr/guides', '/en/guides',
+    '/fr/actualites', '/en/news',
+    '/fr/tarifs', '/en/pricing',
+    '/fr/contact', '/en/contact'
+  ];
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+  for (const r of routes) {
+    xml += `  <url><loc>${baseUrl}${r}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
+  }
+  xml += '</urlset>';
+  res.send(xml);
 });
 
 // -------------------------------------------------------------

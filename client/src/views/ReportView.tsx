@@ -1,9 +1,10 @@
 /**
- * Atlas Carbone - Vue Rapport Officiel d'Inventaire GES
+ * Atlas Carbone - Vue Rapport Officiel d'Inventaire GES & Annexe Méthodologique
  * Conforme aux standards ISO 14064-1:2018 et GHG Protocol Corporate Standard
+ * Génération PDF serveur bilingue et traçabilité des postes non quantifiés
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Printer,
   Download,
@@ -13,22 +14,98 @@ import {
   Calendar,
   Leaf,
   Lock,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen,
+  Info,
+  AlertTriangle,
+  History,
+  FileText
 } from 'lucide-react';
 import { OverviewData } from '../types.js';
+import { api } from '../api.js';
+import { Language, translations, formatNumber, formatDate } from '../i18n.js';
 
 interface ReportViewProps {
   data: OverviewData | null;
   orgName: string;
+  currentOrgId: string;
+  lang?: Language;
 }
 
-export const ReportView: React.FC<ReportViewProps> = ({ data, orgName }) => {
+export const ReportView: React.FC<ReportViewProps> = ({
+  data,
+  orgName,
+  currentOrgId,
+  lang = 'fr'
+}) => {
+  const t = translations[lang];
+
+  // État Annexe Méthodologique
+  const [showAnnex, setShowAnnex] = useState(false);
+  const [annexData, setAnnexData] = useState<any | null>(null);
+  const [annexLoading, setAnnexLoading] = useState(false);
+
+  // État Postes Non Quantifiés
+  const [unquantified, setUnquantified] = useState<any[]>([]);
+
+  // État Revue de Dossier
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewState, setReviewState] = useState('ready_for_review');
+  const [reviewComment, setReviewComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
+
+  const periodId = data?.period?.id;
+
+  useEffect(() => {
+    if (currentOrgId && periodId) {
+      api.activities.listUnquantified(currentOrgId, periodId)
+        .then(setUnquantified)
+        .catch(console.error);
+
+      api.periods.getReviews(currentOrgId, periodId)
+        .then(setReviews)
+        .catch(console.error);
+    }
+  }, [currentOrgId, periodId]);
+
   if (!data || !data.period) {
     return <div className="p-8 text-center text-slate-400">Aucun inventaire disponible.</div>;
   }
 
   const { period, summary, byScope, byCategory, bySite, uncertainty } = data;
   const isClosed = period.status === 'closed';
+
+  const handleOpenAnnex = async () => {
+    setShowAnnex(true);
+    setAnnexLoading(true);
+    try {
+      const res = await api.periods.getMethodologicalAnnex(currentOrgId, period.id);
+      setAnnexData(res);
+    } catch (err: any) {
+      alert("Erreur annexe méthodologique: " + err.message);
+    } finally {
+      setAnnexLoading(false);
+    }
+  };
+
+  const handleAddReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingReview(true);
+    try {
+      await api.periods.addReview(currentOrgId, period.id, {
+        status: reviewState,
+        comment: reviewComment
+      });
+      alert("Statut de revue mis à jour avec succès.");
+      setReviewComment('');
+      const updated = await api.periods.getReviews(currentOrgId, period.id);
+      setReviews(updated);
+    } catch (err: any) {
+      alert("Erreur revue: " + err.message);
+    } finally {
+      setSavingReview(false);
+    }
+  };
 
   const exportCsv = () => {
     let csv = "Catégorie;Scope;Émissions_tCO2e;Part_Pourcentage\n";
@@ -50,29 +127,41 @@ export const ReportView: React.FC<ReportViewProps> = ({ data, orgName }) => {
   return (
     <div className="space-y-6">
       {/* Barre d'action supérieure */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between no-print">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex items-center space-x-2">
           <ShieldCheck className="w-5 h-5 text-brand-800" />
           <span className="font-bold text-slate-900 text-sm">
-            Rapport d'Inventaire des Émissions de Gaz à Effet de Serre (BEGES)
+            {t.repTitle}
           </span>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
+          <button
+            onClick={handleOpenAnnex}
+            className="px-3.5 py-2 border border-brand-800 text-brand-800 hover:bg-brand-50 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>{t.repBtnMethodAnnex}</span>
+          </button>
+
           <button
             onClick={exportCsv}
-            className="px-3.5 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+            className="px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
             <span>Exporter CSV</span>
           </button>
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+
+          {/* Téléchargement PDF Serveur Officiel */}
+          <a
+            href={api.periods.getPdfUrl(currentOrgId, period.id, lang)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
           >
-            <Printer className="w-4 h-4" />
-            <span>Imprimer / Sauvegarder en PDF</span>
-          </button>
+            <Download className="w-4 h-4" />
+            <span>{t.repBtnDownloadPdf}</span>
+          </a>
         </div>
       </div>
 
@@ -86,7 +175,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ data, orgName }) => {
                 Atlas <span className="text-brand-800">Carbone</span>
               </span>
               <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">
-                Rapport R-2026-V1
+                Rapport R-{period.year}-V1
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1 font-medium">
@@ -103,171 +192,302 @@ export const ReportView: React.FC<ReportViewProps> = ({ data, orgName }) => {
               }`}
             >
               {isClosed ? <Lock className="w-3 h-3 mr-1" /> : null}
-              <span>{isClosed ? 'Inventaire Clôturé & Certifiable' : 'Inventaire Provisoire'}</span>
+              <span>{isClosed ? 'Inventaire Clôturé & Immuable' : 'Inventaire en cours de revue'}</span>
             </span>
-            <p className="text-xs text-slate-400 mt-1">Édité le {new Date().toLocaleDateString('fr-FR')}</p>
+            <p className="text-xs text-slate-400 mt-1">Édité le {formatDate(new Date().toISOString(), lang)}</p>
           </div>
         </div>
 
         {/* Identification de l'Organisation et Périmètre */}
         <div className="grid grid-cols-2 gap-6 bg-slate-50 p-5 rounded-xl border border-slate-200 text-xs">
           <div>
-            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-1">Organisation Auditée :</span>
+            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-1">Organisation Déclarée :</span>
             <div className="text-base font-bold text-slate-900">{orgName}</div>
             <p className="text-slate-600 mt-0.5">Royaume du Maroc</p>
-            <p className="text-slate-500 mt-1">Sites audités : {bySite.map(s => s.name).join(', ')}</p>
+            <p className="text-slate-500 mt-1">Sites audités : {bySite.map(s => s.name).join(', ') || 'Site principal'}</p>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-1">Paramètres de l'Inventaire :</span>
-            <p className="text-slate-700">Exercice de référence : <strong>Année civile {period.year}</strong></p>
-            <p className="text-slate-700">Approche de consolidation : <strong>Contrôle opérationnel</strong></p>
-            <p className="text-slate-700">Référentiel des PRG : <strong>GIEC 6e Rapport d'Évaluation (AR6 - 100 ans)</strong></p>
-            <p className="text-slate-700">Facteurs d'émission : <strong>Base Carbone Maroc / FM6E / ONEE</strong></p>
+          <div>
+            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-1">Méthode de Consolidation :</span>
+            <div className="font-bold text-slate-800">
+              {period.consolidation_approach === 'operational_control'
+                ? 'Contrôle Opérationnel (100% des émissions des sites sous gestion)'
+                : period.consolidation_approach}
+            </div>
+            <p className="text-slate-500 mt-1">Période : {period.start_date} au {period.end_date}</p>
           </div>
         </div>
 
-        {/* Synthèse des Émissions (Tableau Exécutif) */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2">
-            1. Synthèse Globale des Émissions de Gaz à Effet de Serre
-          </h3>
-
-          <div className="grid grid-cols-4 gap-4 text-center">
-            <div className="p-4 bg-slate-900 text-white rounded-xl">
-              <span className="text-xs font-semibold text-slate-400 block">TOTAL ÉMISSIONS BRUTES</span>
-              <div className="text-2xl font-black mt-1">
-                {summary.totalTCO2e.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-              </div>
-              <span className="text-[11px] text-brand-300 font-medium">tCO2e</span>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 block">SCOPE 1 (DIRECT)</span>
-              <div className="text-xl font-bold text-slate-900 mt-1">
-                {summary.scope1TCO2e.toFixed(1)}
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">tCO2e (Catégorie 1 ISO)</span>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 block">SCOPE 2 (ÉNERGIE)</span>
-              <div className="text-xl font-bold text-slate-900 mt-1">
-                {summary.scope2TCO2e.toFixed(1)}
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">tCO2e (Location-based)</span>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 block">SCOPE 3 (AMONT/AVAL)</span>
-              <div className="text-xl font-bold text-slate-900 mt-1">
-                {summary.scope3TCO2e.toFixed(1)}
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">tCO2e (Chaîne de valeur)</span>
-            </div>
+        {/* Cartouches des Scopes */}
+        <div className="grid grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-brand-900 text-white">
+            <span className="text-[10px] font-bold text-brand-300 uppercase tracking-wider block">Émissions Totales</span>
+            <div className="text-2xl font-extrabold mt-1">{formatNumber(summary.totalTCO2e, 3, lang)}</div>
+            <span className="text-xs text-brand-200">tCO₂e</span>
           </div>
 
-          {summary.biogenicTCO2e > 0 && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900">
-              <span className="flex items-center space-x-1.5">
-                <Leaf className="w-4 h-4 text-emerald-700" />
-                <span>Émissions de CO2 biogénique déclarées séparément (non incluses dans le total fossile) :</span>
-              </span>
-              <span className="font-bold">{summary.biogenicTCO2e.toFixed(2)} tCO2e</span>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scope 1 (Direct)</span>
+            <div className="text-xl font-bold text-slate-800 mt-1">{formatNumber(summary.scope1TCO2e, 3, lang)}</div>
+            <span className="text-xs text-slate-500">tCO₂e</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scope 2 (Électricité)</span>
+            <div className="text-xl font-bold text-slate-800 mt-1">{formatNumber(summary.scope2TCO2e, 3, lang)}</div>
+            <span className="text-xs text-slate-500">tCO₂e (Location-based)</span>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scope 3 (Chaîne valeur)</span>
+            <div className="text-xl font-bold text-slate-800 mt-1">{formatNumber(summary.scope3TCO2e, 3, lang)}</div>
+            <span className="text-xs text-slate-500">tCO₂e</span>
+          </div>
+        </div>
+
+        {/* Incertitude & CO2 Biogénique */}
+        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-600 flex justify-between items-center">
+          <div>
+            <span className="font-bold text-slate-800">Intervalle d’incertitude statistique (95%) : </span>
+            <span>[{formatNumber(uncertainty.minKg / 1000.0, 2, lang)} ; {formatNumber(uncertainty.maxKg / 1000.0, 2, lang)}] tCO₂e (± {formatNumber(uncertainty.uncertaintyRelativePct, 1, lang)}%)</span>
+          </div>
+          <div>
+            <span className="font-bold text-slate-800">CO₂ biogénique : </span>
+            <span>{formatNumber(summary.biogenicTCO2e, 3, lang)} tCO₂e (présenté séparément)</span>
+          </div>
+        </div>
+
+        {/* Tableau détaillé des Catégories ISO 14064 */}
+        <div className="space-y-3">
+          <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
+            Ventilation par Catégorie d'Émission
+          </h3>
+
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-4">Poste / Catégorie</th>
+                  <th className="py-2.5 px-3">Scope</th>
+                  <th className="py-2.5 px-4 text-right">Émissions (tCO₂e)</th>
+                  <th className="py-2.5 px-4 text-right">Part (%)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {byCategory.map((c, i) => {
+                  const pct = summary.totalTCO2e > 0 ? (c.tco2e / summary.totalTCO2e) * 100 : 0;
+                  return (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="py-2 px-4 font-medium text-slate-900">{c.label}</td>
+                      <td className="py-2 px-3">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                          S{c.scope}
+                        </span>
+                      </td>
+                      <td className="py-2 px-4 text-right font-mono font-bold text-slate-800">
+                        {formatNumber(c.tco2e, 3, lang)}
+                      </td>
+                      <td className="py-2 px-4 text-right text-slate-500">
+                        {formatNumber(pct, 1, lang)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Section Postes Identifiés, Non Quantifiés */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
+              Postes Identifiés, Non Quantifiés ({unquantified.length})
+            </h3>
+          </div>
+          <p className="text-xs text-slate-500">
+            Règle de rigueur méthodologique : Ces activités ont été relevées mais n'ont pas pu être quantifiées avec certitude en l'absence de facteur validé ou de relevé physique exploitable. Aucune valeur zéro n'a été affectée.
+          </p>
+
+          {unquantified.length === 0 ? (
+            <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-400 italic">
+              Aucun poste non quantifié déclaré sur le périmètre actuel.
+            </div>
+          ) : (
+            <div className="border border-amber-200 rounded-xl overflow-hidden bg-amber-50/50">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-amber-100/70 text-amber-900 font-bold border-b border-amber-200">
+                  <tr>
+                    <th className="py-2 px-4">Poste / Flux</th>
+                    <th className="py-2 px-4">Catégorie</th>
+                    <th className="py-2 px-4">Motif de non-quantification</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-200/60">
+                  {unquantified.map((u, i) => (
+                    <tr key={i}>
+                      <td className="py-2 px-4 font-bold text-slate-900">{u.label}</td>
+                      <td className="py-2 px-4 text-slate-600">{u.category}</td>
+                      <td className="py-2 px-4 text-amber-800 italic">{u.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
-        {/* Détail par Catégorie et Poste ISO 14064 */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2">
-            2. Ventilation par Catégorie d'Activité
-          </h3>
-
-          <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
-            <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-              <tr>
-                <th className="py-2.5 px-3">Catégorie d'Activité</th>
-                <th className="py-2.5 px-3">Scope GHG</th>
-                <th className="py-2.5 px-3">Catégorie ISO 14064-1:2018</th>
-                <th className="py-2.5 px-3 text-right">Émissions (tCO2e)</th>
-                <th className="py-2.5 px-3 text-right">Part relative</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {byCategory.map((cat, i) => {
-                const pct = summary.totalTCO2e > 0 ? (cat.tco2e / summary.totalTCO2e) * 100 : 0;
-                return (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="py-2 px-3 font-medium text-slate-900 capitalize">
-                      {cat.label.replace(/_/g, ' ')}
-                    </td>
-                    <td className="py-2 px-3">Scope {cat.scope}</td>
-                    <td className="py-2 px-3 text-slate-600">
-                      {cat.scope === 1 ? 'Cat. 1 (Émissions directes)' : cat.scope === 2 ? 'Cat. 2 (Énergie indirecte)' : 'Cat. 3 & 4 (Autres indirectes)'}
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                      {cat.tco2e.toFixed(3)}
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono text-slate-600">
-                      {pct.toFixed(1)}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Évaluation des Incertitudes & Qualité des Données */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2">
-            3. Analyse des Incertitudes & Limites Méthodologiques
-          </h3>
-
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2 leading-relaxed">
-            <p>
-              Conformément au chapitre 10 du GHG Protocol et à la norme ISO 14064-1:2018, les incertitudes sur les données
-              d'activité et sur les facteurs d'émission ont été propagées par <strong>quadrature gaussienne</strong>.
-            </p>
-            <div className="grid grid-cols-2 gap-4 pt-1 font-mono">
-              <div>
-                <span className="text-slate-500">Incertitude relative globale :</span>{' '}
-                <strong className="text-slate-900">±{uncertainty.uncertaintyRelativePct.toFixed(1)}%</strong>
-              </div>
-              <div>
-                <span className="text-slate-500">Intervalle de confiance à 95% :</span>{' '}
-                <strong className="text-slate-900">
-                  [{(uncertainty.minKg / 1000).toFixed(1)} ; {(uncertainty.maxKg / 1000).toFixed(1)}] tCO2e
-                </strong>
-              </div>
-            </div>
-            <p className="text-slate-500 pt-1">
-              *Note sur l'indépendance : Les consommations sous un même facteur d'émission (ex: réseau ONEE) présentent
-              une corrélation d'erreur systématique prise en compte dans la borne supérieure.
-            </p>
-          </div>
-        </div>
-
-        {/* Bloc de Signature & Vérification */}
-        <div className="pt-6 border-t-2 border-slate-200 grid grid-cols-2 gap-8 text-xs">
-          <div>
-            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-2">Responsable de l'Inventaire :</span>
-            <div className="h-20 border border-dashed border-slate-300 rounded-xl p-3 flex flex-col justify-between">
-              <span className="font-bold text-slate-800">Direction Générale / RSE</span>
-              <span className="text-[11px] text-slate-400">Date et visa interne</span>
-            </div>
+        {/* Historique de Revue & Gouvernance */}
+        <div className="border-t border-slate-200 pt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+              <History className="w-4 h-4 text-brand-800" />
+              <span>Contrôle Interne et Revue du Dossier</span>
+            </h3>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+              Statut : {period.status}
+            </span>
           </div>
 
-          <div>
-            <span className="text-slate-400 font-bold uppercase tracking-wider block mb-2">Vérification Tiers Indépendant (Optionnel) :</span>
-            <div className="h-20 border border-dashed border-slate-300 rounded-xl p-3 flex flex-col justify-between">
-              <span className="text-slate-500">Organisme vérificateur accrédité ISO 14065</span>
-              <span className="text-[11px] text-slate-400">Mention : Non soumis à vérification tierce</span>
+          {/* Formulaire de mise à jour de statut */}
+          <form onSubmit={handleAddReview} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 no-print">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mettre à jour l'état de l'inventaire</label>
+                <select
+                  value={reviewState}
+                  onChange={(e) => setReviewState(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white outline-none"
+                >
+                  <option value="draft">Brouillon en cours (draft)</option>
+                  <option value="to_complete">À compléter (données manquantes)</option>
+                  <option value="ready_for_review">Prêt pour revue interne</option>
+                  <option value="reviewed_internal">Revu en interne (validé)</option>
+                  <option value="locked">Verrouillé / Immuable</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Observations / Commentaires de revue</label>
+                <input
+                  type="text"
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="ex: Vérification des factures ONEE terminée"
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={savingReview}
+                className="px-4 py-1.5 bg-brand-800 hover:bg-brand-900 disabled:bg-slate-300 text-white font-bold text-xs rounded-lg transition"
+              >
+                {savingReview ? 'Enregistrement...' : 'Enregistrer la revue'}
+              </button>
+            </div>
+          </form>
+
+          {/* Journal des revues */}
+          {reviews.length > 0 && (
+            <div className="space-y-1.5 text-xs text-slate-600">
+              {reviews.map((r, i) => (
+                <div key={i} className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span><strong>{r.reviewer_name}</strong> a passé l'inventaire à <em>« {r.status} »</em></span>
+                  <span className="text-slate-400">{formatDate(r.created_at, lang)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Attestation et Limite Légale */}
+        <div className="border-t border-slate-200 pt-6 space-y-2 text-[11px] text-slate-500 leading-relaxed">
+          <p className="font-bold text-slate-700">Attestation méthodologique :</p>
+          <p>{t.repLegalNotice}</p>
+          <div className="pt-4 flex justify-between items-end text-xs">
+            <div>
+              <p className="font-bold text-slate-800">Établi par :</p>
+              <p>{orgName}</p>
+            </div>
+            <div className="text-right font-mono">
+              <p className="font-bold text-slate-800">Moteur logiciel :</p>
+              <p>Atlas Carbone v2.0 (Maroc)</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal Annexe Méthodologique */}
+      {showAnnex && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                  <BookOpen className="w-5 h-5 text-brand-800" />
+                  <span>Annexe Méthodologique à Accès Contrôlé</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Revue autorisée des seuls facteurs d'émission mobilisés pour l'exercice {period.year}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAnnex(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {annexLoading ? (
+              <div className="p-8 text-center text-slate-400 text-xs">Extraction des facteurs mobilisés...</div>
+            ) : annexData ? (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-brand-50 border border-brand-200 rounded-xl text-brand-900">
+                  <p className="font-bold">{annexData.attribution}</p>
+                  <p className="text-[11px] text-brand-700 mt-1">{annexData.limitationNotice}</p>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2 px-3">Scope</th>
+                        <th className="py-2 px-4">Poste / Facteur mobilisé</th>
+                        <th className="py-2 px-3">Unité</th>
+                        <th className="py-2 px-3">Année réf.</th>
+                        <th className="py-2 px-3">Source</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {annexData.factors.map((f: any, i: number) => (
+                        <tr key={i}>
+                          <td className="py-2 px-3 font-bold text-slate-800">S{f.scope}</td>
+                          <td className="py-2 px-4 font-medium text-slate-900">{f.name}</td>
+                          <td className="py-2 px-3 text-slate-500">{f.denominator_unit}</td>
+                          <td className="py-2 px-3 text-slate-500">{f.reference_year}</td>
+                          <td className="py-2 px-3 text-slate-500 font-mono text-[10px]">{f.source}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setShowAnnex(false)}
+                    className="px-4 py-2 bg-slate-800 text-white font-bold text-xs rounded-xl"
+                  >
+                    Fermer l'annexe
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

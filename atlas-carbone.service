@@ -1,0 +1,26 @@
+[Unit]
+Description=Atlas Carbone Node.js Application (mesure-emissions.com)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/atlas-carbone/server
+ExecStart=/usr/bin/npx tsx src/server.ts
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=atlas-carbone
+Environment=NODE_ENV=production
+Environment=PORT=5000
+Environment=TZ=Africa/Casablanca
+Environment=JWT_SECRET=production_secret_key_change_me_atlas_carbone_2026
+
+# Limites de sécurité système
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

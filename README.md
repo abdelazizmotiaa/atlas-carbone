@@ -1,57 +1,61 @@
-# Atlas Carbone — Plateforme SaaS de Comptabilité GES & Conformité MACF Maroc
+# Atlas Carbone — Plateforme SaaS Souveraine de Comptabilité Carbone & Conformité MACF Maroc
 
-**Atlas Carbone** est une plateforme SaaS B2B souveraine conçue pour les entreprises marocaines (PME, grands groupes industriels, multisites et exportateurs vers l'Union Européenne). Elle permet de mesurer les émissions de gaz à effet de serre (Scopes 1, 2, 3), de piloter des plans de réduction, de générer des rapports certifiables selon **ISO 14064-1:2018** et le **GHG Protocol**, et de préparer les dossiers réglementaires d'émissions intrinsèques pour le **Mécanisme d'Ajustement Carbone aux Frontières (MACF / CBAM)** européen.
+**Atlas Carbone** est une plateforme SaaS B2B souveraine conçue spécifiquement pour les entreprises marocaines (PME, ETI, grands groupes industriels, multisites et exportateurs vers l'Union Européenne). Elle permet de mesurer rigoureusement les émissions de gaz à effet de serre (Scopes 1, 2, 3), de piloter des plans de réduction concrets, d'éditer des rapports conformes aux standards **ISO 14064-1:2018** et **GHG Protocol**, et de préparer les déclarations d'émissions intrinsèques pour le **Mécanisme d'Ajustement Carbone aux Frontières (MACF / CBAM)** européen.
 
 ---
 
-## 1. Caractéristiques Clés
+## 1. Caractéristiques Clés & Innovations
 
-- **Moteur de calcul déterministe pur :** Aucune boîte noire d'IA dans les opérations arithmétiques. Calculs stricts côté serveur avec conversions physiques SI automatisées (kWh, MWh, litres, tonnes, tonne-km, passager-km).
-- **Catalogue de 670 facteurs nationaux audités :** Extraction et normalisation intégrale des facteurs du classeur de référence partenarial (Fondation Mohammed VI pour l'Environnement, AMEE, IMANOR, ADEME, IPCC AR6).
-- **Gouvernance et revue des facteurs :** Détection des facteurs ambigus « amont + combustion » bloqués en Scope 1 pur sans décomposition préalable ; gestion rigoureuse du mix électrique ONEE (0,6426 kgCO2e/kWh net hors pertes) avec distinction stricte *Location-based* vs *Market-based*.
-- **Module Export Europe MACF / CBAM (Régime définitif 2026) :** Couverture des 6 secteurs initiaux (Ciment, Fer & Acier, Aluminium, Engrais, Électricité, Hydrogène), codes NC 8 chiffres, affectation des procédés, intégration des précurseurs et génération du dossier de transmission importateur UE.
-- **Multi-Tenant strict & RBAC fin :** Étanchéité totale des données entre entreprises clientes et 7 rôles prédéfinis (`super_admin`, `commercial`, `admin`, `carbon_manager`, `site_manager`, `contributor`, `auditor`).
-- **Composant « Voir le calcul » :** Traçabilité exhaustive affichant la donnée d'activité brute, la conversion d'unité, la référence du facteur d'émission, la formule mathématique, le PRG GIEC AR6 appliqué, l'incertitude propagée et l'horodatage UTC.
-- **Rapports officiels & Devis en MAD :** Génération de rapports imprimables paginés conformes et devis paramétrables avec décomposition HT, TVA 20% et TTC en Dirhams marocains.
+- **Essai sans compte instantané & souverain :** Tout visiteur peut renseigner son entreprise, sélectionner son secteur, enregistrer des activités réelles et télécharger un rapport préliminaire déterministe. Session isolée (TTL 7 jours) transférable en 1 clic vers un compte permanent sans aucune ressaisie.
+- **Moteur de calcul déterministe 100% serveur :** Aucune boîte noire d'IA dans les opérations arithmétiques. Conversions physiques rigoureuses (kWh, MWh, litres, tonnes, tonne-km, passager-km), gestion des incertitudes Gaussiennes, séparation stricte *Location-based* et *Market-based* pour le réseau électrique national ONEE.
+- **Catalogue de facteurs de référence marocain audité :** Source unique autorisée : classeur partenarial officiel (Fondation Mohammed VI pour l'Environnement, AMEE, ADEME, IPCC AR6). Empreinte SHA-256 vérifiée : `477f3cf008303144606baf80dba9b125d791a20eccdbc009cf9853e5007ded6c`.
+- **Sanctuarisation & Confidentialité du Catalogue :** La table brute des facteurs est strictement réservée au `super_admin` (`GET /api/factors` renvoie 403 aux entreprises). Les entreprises accèdent uniquement à un catalogue d'options aseptisé (`GET /api/activities/catalog-options`) ne contenant ni coefficients ni formules.
+- **Règle de rigueur méthodologique :** Une activité sans facteur compatible reste explicitement tracée comme *« Poste identifié, non quantifié : facteur disponible insuffisant »*. Aucun zéro factice n'est jamais injecté.
+- **8 Parcours sectoriels adaptés au Maroc :** Questions formulées en langage courant guidant l'utilisateur vers ses pièces justificatives réelles (factures ONEE, cartes carburant Afriquia/Total/Shell, citernes vrac de propane, registres de maintenance de climatiseurs, fiches de paie).
+- **Pédagogie intégrée & Académie Bilan Carbone :** 10 micro-modules d'auto-formation courts avec cas pratiques et glossaire bilingue. Distinction légale formelle : contrôle logiciel vs audit tierce-partie accrédité ISO 14065.
+- **Génération de rapport PDF officiel côté serveur :** Rapports complets générés par PDFKit avec scopes, graphiques vectoriels, tableau de bord, annexe méthodologique contrôlée et zones de signature pour revue interne.
+- **Bilinguisme intégral Français / Anglais :** Interface, formulaires, aides contextuelles, actualités et rapports PDF bilingues avec préservation arithmétique stricte des totaux d'émissions.
+- **Newsletter Double Opt-In :** Inscription bilingue avec confirmation par jeton unique, table de suppression anti-réabonnement involontaire et journalisation du consentement.
+- **Assistant IA facultatif avec repli autonome :** Intégration Gemini sandboxée pour l'assistance contextuelle, avec repli déterministe automatique si aucune clé API n'est fournie. Zéro appel d'IA dans les calculs mathématiques.
+- **Sauvegarde & Restauration physique SQLite WAL :** Checkpoints WAL forcés, vérification SHA-256, copies de sécurité pré-restauration et contrôle d'intégrité `PRAGMA integrity_check`.
 
 ---
 
 ## 2. Architecture Technique
 
-- **Backend :** Node.js 22, Express, TypeScript, module natif `node:sqlite` (SQLite 3 haute performance en mode WAL avec clés étrangères strictes).
-- **Frontend :** React 18, TypeScript, Vite, TailwindCSS, Lucide Icons, design system sobre (vert profond `#064E3B`, touches ocre et slate).
-- **Sécurité :** Authentification JWT, hachage bcrypt (cost 10), protection contre l'injection de formules CSV, permissions vérifiées côté serveur sur chaque route.
-- **Conteneurisation :** `Dockerfile` multi-stage et `docker-compose.yml` prêts pour la production.
+- **Backend :** Node.js 22, Express 5, TypeScript, module natif `node:sqlite` (SQLite 3 en mode WAL avec contraintes de clés étrangères et indexation optimisée).
+- **Frontend :** React 18, TypeScript, Vite, TailwindCSS, Lucide Icons, dictionnaire de traduction unifié (`client/src/i18n.ts`).
+- **Génération Documentaire :** PDFKit côté serveur avec vectorisation directe des métriques et tableaux de synthèse.
+- **Sécurité :** Authentification JWT, hachage bcrypt (cost 10), isolation multi-tenant vérifiée côté serveur sur chaque route, protection contre l'injection de formules CSV (`=`, `+`, `-`, `@`).
 
 ```text
 atlas-carbone/
 ├── client/                     # Frontend SPA React 18 + Vite + TailwindCSS
 │   ├── src/
-│   │   ├── views/             # LandingView, Dashboard, Activities, Factors, CBAM, Reduction, Quotes, Report
-│   │   ├── api.ts             # Client API typé avec gestion des tokens
-│   │   └── types.ts           # Modèles de données TypeScript
-│   └── dist/                  # Bundle de production compilé
-├── server/                     # Backend modulaire Node.js / Express / TypeScript
+│   │   ├── views/             # LandingView, TrialFlowView, AcademyView, PublicContentView, etc.
+│   │   ├── i18n.ts            # Dictionnaire bilingue unifié (FR / EN)
+│   │   ├── api.ts             # Client API typé
+│   │   └── types.ts           # Types TypeScript du domaine
+│   └── dist/                  # Bundle de production compilé servi par Express
+├── server/                     # Backend modulaire Express 5 / Node.js 22 / TypeScript
 │   ├── src/
-│   │   ├── core/              # Moteur de calcul pur (units.ts, calculations.ts)
-│   │   ├── db/                # Base de données (database.ts, seed.ts)
-│   │   └── server.ts          # API REST & Contrôleurs
-│   └── data/                  # Base de données SQLite persistante (atlas_carbone.db)
-├── data/
-│   └── catalog_seed.json      # 670 facteurs d'émissions normalisés
-├── docs/
-│   ├── audit-classeur.md      # Audit exhaustif du classeur Excel marocain
-│   └── marketing-templates.md # Modèles de posts LinkedIn et emails commerciaux
+│   │   ├── core/              # Moteur de calcul (units.ts, calculations.ts, pdfReport.ts)
+│   │   ├── db/                # Base SQLite WAL (database.ts, seed.ts, seedContent.ts)
+│   │   ├── modules/           # Modules métier (trial.ts, sectors.ts, content.ts, assistant.ts)
+│   │   └── server.ts          # API REST & Contrôleurs sécurisés
+│   ├── tests/
+│   │   └── acceptance_e2e_tests.ts # Suite complète d'acceptation (16 scénarios E2E)
+│   └── data/                  # Base persistante (atlas_carbone.db) et sauvegardes
 ├── scripts/
-│   ├── audit_excel.py         # Script d'audit du classeur source
-│   └── extract_factors.py     # Pipeline d'extraction et normalisation des facteurs
+│   ├── backup_db.ts           # Script de sauvegarde physique WAL avec empreinte SHA-256
+│   └── restore_db.ts          # Script de restauration sécurisée avec contrôle d'intégrité
 ├── tests/
-│   ├── mandatory_numerical_tests.ts   # Suite des 13 tests numériques obligatoires
-│   └── security_isolation_tests.ts    # Tests d'étanchéité multi-tenant et RBAC
+│   ├── mandatory_numerical_tests.ts   # 13 tests numériques obligatoires
+│   └── security_isolation_tests.ts    # 5 tests d'étanchéité multi-tenant et RBAC
 ├── Dockerfile                 # Conteneur multi-stage
 ├── docker-compose.yml         # Déploiement conteneurisé
-├── DECISIONS.md               # Registre des décisions d'architecture
-├── PROJECT_STATUS.md          # Suivi d'avancement des livrables
+├── DECISIONS.md               # Registre d'architecture (AD-001 à AD-013)
+├── PROJECT_STATUS.md          # Suivi d'avancement exhaustif et preuves de validation
 └── README.md
 ```
 
@@ -60,102 +64,72 @@ atlas-carbone/
 ## 3. Démarrage Rapide
 
 ### Prérequis
-- Node.js >= 20 (testé et validé sous Node.js v22.23.3)
-- npm >= 10 (testé sous npm 10.9.9)
+- Node.js >= 20 (développé et validé sous Node.js v22.23.3)
+- npm >= 10
 
 ### Lancement Local Immédiat
 ```bash
-# 1. Cloner ou se positionner dans le dossier
-cd atlas-carbone
+# 1. Se positionner dans le dossier server
+cd atlas-carbone/server
 
-# 2. Installer les dépendances du serveur
-cd server
-npm install
-
-# 3. Lancer le serveur (initialise et charge automatiquement la base et les 670 facteurs)
-npx tsx src/server.ts
+# 2. Lancer le serveur (initialise automatiquement la base WAL et sert le frontend compilé)
+./node_modules/.bin/tsx src/server.ts
 ```
-L'application complète (Backend API + Frontend SPA compilé) est accessible sur :  
+L'application complète (Backend API + Frontend SPA) est immédiatement accessible sur :  
 👉 **http://localhost:5000**
 
-### Mode Développement Frontend (Hot-Reload)
-Si vous souhaitez modifier le frontend avec rechargement à chaud :
-```bash
-cd atlas-carbone/client
-npm install
-npm run dev
-```
-Accessible sur **http://localhost:5173** (avec proxy automatique vers l'API sur le port 5000).
-
-### Lancement via Docker Compose
-```bash
-cd atlas-carbone
-docker-compose up --build -d
-```
-
 ---
 
-## 4. Comptes de Démonstration Préconfigurés
+## 4. Suites de Tests Automatisés (34 / 34 RÉUSSIS)
 
-Chaque profil illustre un cas d'usage réel et isolé :
+### A. Suite d'Acceptation E2E (16 Scénarios d'Acceptation)
+Vérifie l'intégralité des parcours fonctionnels, de l'essai invité au rapport PDF et à la restauration de base :
+```bash
+cd atlas-carbone/server
+npm test
+# ou : ./node_modules/.bin/tsx tests/acceptance_e2e_tests.ts
+```
+*Résultat : 16 / 16 tests validés avec succès (0 échec).*
 
-| Email | Mot de passe | Rôle | Entreprise associée | Description du profil |
-|---|---|---|---|---|
-| `admin@agro-atlas.ma` | `AgroAtlas2026!` | Admin Entreprise | Atlas Agro-Alimentaire SARL | DG / Administrateur (2 sites, Bilan 2025 clôturé de 766 tCO2e) |
-| `carbone@agro-atlas.ma` | `CarboneAtlas2026!` | Responsable Carbone | Atlas Agro-Alimentaire SARL | Pilote RSE / Collecte, accès à « Voir le calcul » |
-| `site.agadir@agro-atlas.ma` | `SiteAgadir2026!` | Responsable Site | Atlas Agro-Alimentaire SARL | Confiné au site d'Agadir (entrepôt frigorifique) |
-| `export@metal-oriental.ma` | `MetalExport2026!` | Exportateur MACF | Métallurgie de l'Oriental SA | Industrie de l'acier (Nador), fers à béton (CN 7214 20 00) |
-| `auditeur@verifcarbone.ma` | `Auditeur2026!` | Auditeur Externe | Atlas Agro-Alimentaire SARL | Consultation en lecture seule certifiable ISO 14064 |
-| `commercial@atlascarbone.ma`| `AtlasCommercial2026!`| Commercial Plateforme | Global | Gestion des devis (aucun accès aux bilans clients) |
-| `superadmin@atlascarbone.ma`| `AtlasSuperAdmin2026!`| Super-Administrateur | Global | Administration technique et gouvernance du catalogue |
-
-> **Astuce :** Sur la page d'accueil (http://localhost:5000), des boutons **« Comptes Démo 1-Clic »** permettent de vous connecter instantanément sans saisir de mot de passe.
-
----
-
-## 5. Exécution des Tests Automatisés
-
-### Suite des 13 Tests Numériques Obligatoires
-Vérifie les règles d'arithmétique exacte, de conversion physique, de PRG GIEC AR6, d'anti-double comptage et d'intensité MACF :
+### B. Tests Numériques Obligatoires (13 Tests Arithmétiques)
 ```bash
 cd atlas-carbone/server
 ./node_modules/.bin/tsx ../tests/mandatory_numerical_tests.ts
 ```
-*Résultat attendu : 13 / 13 tests réussis (0 échec).*
+*Résultat : 13 / 13 tests validés avec succès.*
 
-### Suite des Tests de Sécurité et d'Isolation Multi-Tenant
-Vérifie le cloisonnement strict des entreprises, les restrictions des responsables de site et l'échappement anti-injection CSV :
+### C. Tests de Sécurité et d'Isolation Multi-Tenant (5 Tests)
 ```bash
 cd atlas-carbone/server
 ./node_modules/.bin/tsx ../tests/security_isolation_tests.ts
 ```
-*Résultat attendu : 5 / 5 tests réussis (0 échec).*
+*Résultat : 5 / 5 tests validés avec succès.*
 
 ---
 
-## 6. Procédure de Sauvegarde et Restauration
+## 5. Procédures de Sauvegarde & Restauration
 
-### Sauvegarde
-La base de données SQLite en mode WAL garantit l'intégrité transactionnelle. Pour effectuer une sauvegarde cohérente à chaud :
+### Sauvegarde à chaud (WAL Checkpoint + SHA-256)
 ```bash
-# Sauvegarde instantanée du fichier SQLite
-cp atlas-carbone/server/data/atlas_carbone.db atlas-carbone/server/data/backup_$(date +%Y%m%d_%H%M%S).db
+cd atlas-carbone/server
+npm run backup
 ```
+*Génère une archive horodatée dans `data/backups/` avec métadonnées JSON et empreinte SHA-256.*
 
-### Restauration
+### Restauration avec contrôle d'intégrité
 ```bash
-# Arrêter le serveur ou le conteneur
-# Remplacer le fichier actif par la sauvegarde choisie
-cp atlas-carbone/server/data/backup_XXXXXXXX_XXXXXX.db atlas-carbone/server/data/atlas_carbone.db
-# Redémarrer le serveur
+cd atlas-carbone/server
+npm run restore data/backups/atlas_carbone_backup_FICHIER.db
 ```
+*Vérifie l'empreinte SHA-256, crée un instantané de sécurité `.bak` de la base actuelle, restaure le fichier et exécute `PRAGMA integrity_check`.*
 
 ---
 
-## 7. Paramètres Requis pour l'Ouverture Commerciale
+## 6. Coordonnées de Contact & Mention Légale
 
-Pour passer d'un pilote technique opérationnel à une exploitation commerciale en ligne avec encaissement direct :
-1. **Nom de domaine & Certificat TLS :** Acquisition du domaine définitif (ex: `atlascarbone.ma`) et configuration d'un reverse-proxy Nginx avec Let's Encrypt.
-2. **Contrat Marchand de Paiement :** Agrément avec un prestataire de paiement marocain (ex: CMI / PayZone / CinetPay Maroc) pour l'encaissement CB marocaine/internationale en MAD. En attendant, le flux devis + virement bancaire opérationnel est actif.
-3. **Immatriculation Commerciale :** Renseignement des mentions légales définitives (RC, IF, Patente, ICE du vendeur) dans le paramétrage administrateur.
-4. **Déclaration CNDP :** Finalisation de la déclaration de conformité Loi 09-08 auprès de la Commission Nationale de Contrôle de la Protection des Données à Caractère Personnel pour l'hébergement des données d'utilisateurs au Maroc.
+- **Responsable Produit & Technique :** Abdelaziz Motiaa  
+- **Email direct :** [abdelaziz.motiaa@gmail.com](mailto:abdelaziz.motiaa@gmail.com)  
+- **Téléphone direct :** [+212671581167](tel:+212671581167)  
+- **Localisation :** Maroc  
+
+*Note sur la propriété intellectuelle et les données sources :* Les facteurs d'émission marocains intégrés proviennent du classeur partenarial de référence élaboré avec les contributions de la Fondation Mohammed VI pour la Protection de l'Environnement, de l'AMEE, de l'ADEME et de l'ABC. Atlas Carbone ne revendique aucune propriété exclusive sur ces données publiques de référence et assure la citation transparente des sources officielles dans chaque rapport émis.

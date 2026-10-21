@@ -35,8 +35,15 @@ import { ReductionPlanView } from './views/ReductionPlanView.js';
 import { CommercialQuotesView } from './views/CommercialQuotesView.js';
 import { ReportView } from './views/ReportView.js';
 import { OnboardingWizardModal } from './views/OnboardingWizardModal.js';
+import { TrialFlowView } from './views/TrialFlowView.js';
+import { AcademyView } from './views/AcademyView.js';
+import { PublicContentView } from './views/PublicContentView.js';
+import { Language, translations } from './i18n.js';
+import { GraduationCap, Newspaper } from 'lucide-react';
 
 export const App: React.FC = () => {
+  const [lang, setLang] = useState<Language>('fr');
+  const [publicView, setPublicView] = useState<'landing' | 'trial' | 'academy' | 'guides' | 'news'>('landing');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrgId, setCurrentOrgId] = useState<string>('');
@@ -129,10 +136,115 @@ export const App: React.FC = () => {
   const currentOrg = organizations.find(o => o.id === currentOrgId) || organizations[0];
   const isPeriodClosed = overviewData?.period?.status === 'closed';
 
-  // Si non connecté, afficher le site public d'acquisition
+  // Si non connecté, afficher le site public ou le parcours d'essai invité
   if (!user) {
+    if (publicView === 'trial') {
+      return (
+        <TrialFlowView
+          lang={lang}
+          onClaimSuccess={(u, orgs) => {
+            setUser(u);
+            setOrganizations(orgs);
+            if (orgs.length > 0) {
+              const orgId = orgs[0].id;
+              setCurrentOrgId(orgId);
+              setStoredOrgId(orgId);
+            }
+            setPublicView('landing');
+          }}
+          onExitTrial={() => setPublicView('landing')}
+        />
+      );
+    }
+
+    if (publicView === 'academy') {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setPublicView('landing')}>
+              <div className="w-8 h-8 rounded-lg bg-brand-900 text-brand-300 flex items-center justify-center font-bold">
+                <Globe2 className="w-5 h-5 text-brand-400" />
+              </div>
+              <span className="font-bold text-slate-900">Atlas Carbone — Académie</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+                className="px-2.5 py-1 rounded border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center space-x-1"
+              >
+                <Globe2 className="w-3.5 h-3.5 text-brand-700" />
+                <span>{lang === 'fr' ? 'EN' : 'FR'}</span>
+              </button>
+              <button
+                onClick={() => setPublicView('landing')}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+              >
+                ← {lang === 'en' ? 'Back to Home' : "Retour à l'accueil"}
+              </button>
+            </div>
+          </header>
+          <div className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
+            <AcademyView
+              lang={lang}
+              onNavigateAction={(route) => {
+                if (route === 'trial') setPublicView('trial');
+                else setPublicView('landing');
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (publicView === 'guides' || publicView === 'news') {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+          <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setPublicView('landing')}>
+              <div className="w-8 h-8 rounded-lg bg-brand-900 text-brand-300 flex items-center justify-center font-bold">
+                <Globe2 className="w-5 h-5 text-brand-400" />
+              </div>
+              <span className="font-bold text-slate-900">
+                Atlas Carbone — {publicView === 'news' ? (lang === 'en' ? 'Regulatory News' : 'Actualités') : 'Guides Piliers'}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+                className="px-2.5 py-1 rounded border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center space-x-1"
+              >
+                <Globe2 className="w-3.5 h-3.5 text-brand-700" />
+                <span>{lang === 'fr' ? 'EN' : 'FR'}</span>
+              </button>
+              <button
+                onClick={() => setPublicView('landing')}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+              >
+                ← {lang === 'en' ? 'Back to Home' : "Retour à l'accueil"}
+              </button>
+            </div>
+          </header>
+          <div className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
+            <PublicContentView
+              lang={lang}
+              initialTab={publicView === 'news' ? 'news' : 'guides'}
+              onSelectAction={(act) => {
+                if (act === 'trial') setPublicView('trial');
+                else setPublicView('landing');
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <LandingView
+        lang={lang}
+        onLanguageChange={setLang}
+        onStartTrial={() => setPublicView('trial')}
+        onOpenAcademy={() => setPublicView('academy')}
+        onOpenContent={(tab) => setPublicView(tab)}
         onLoginSuccess={(u, orgs) => {
           setUser(u);
           setOrganizations(orgs);
@@ -204,13 +316,15 @@ export const App: React.FC = () => {
           {/* Liens de Navigation */}
           <nav className={`p-3 space-y-1 text-xs font-semibold ${mobileMenuOpen ? 'block' : 'hidden md:block'}`}>
             {[
-              { id: 'overview', label: "Vue d'ensemble", icon: LayoutDashboard },
-              { id: 'activities', label: "Données & Saisie", icon: Activity },
-              { id: 'factors', label: "Catalogue Facteurs", icon: BookOpen },
-              { id: 'reduction', label: "Plan de transition", icon: TrendingDown },
-              { id: 'cbam', label: "Export Europe (MACF)", icon: Factory },
-              { id: 'quotes', label: "Devis & Abonnement", icon: CreditCard },
-              { id: 'report', label: "Rapport Officiel", icon: FileText }
+              { id: 'overview', label: lang === 'en' ? "Overview" : "Vue d'ensemble", icon: LayoutDashboard },
+              { id: 'activities', label: lang === 'en' ? "Data & Input" : "Données & Saisie", icon: Activity },
+              { id: 'factors', label: lang === 'en' ? "Emission Factors" : "Catalogue Facteurs", icon: BookOpen },
+              { id: 'reduction', label: lang === 'en' ? "Action Plan" : "Plan de transition", icon: TrendingDown },
+              { id: 'cbam', label: lang === 'en' ? "EU Export (CBAM)" : "Export Europe (MACF)", icon: Factory },
+              { id: 'academy', label: lang === 'en' ? "Carbon Academy" : "Académie Carbone", icon: GraduationCap },
+              { id: 'public_content', label: lang === 'en' ? "Guides & News" : "Guides & Veille", icon: Newspaper },
+              { id: 'quotes', label: lang === 'en' ? "Subscription & Quote" : "Devis & Abonnement", icon: CreditCard },
+              { id: 'report', label: lang === 'en' ? "Official Report" : "Rapport Officiel", icon: FileText }
             ].map(item => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
@@ -273,6 +387,16 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-3 text-xs">
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+              className="px-2.5 py-1 rounded-md border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center space-x-1"
+              title={lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
+            >
+              <Globe2 className="w-3.5 h-3.5 text-brand-700" />
+              <span>{lang === 'fr' ? 'EN' : 'FR'}</span>
+            </button>
+
             <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-[11px]">
               MAD (Dirham Marocain)
             </span>
@@ -316,7 +440,20 @@ export const App: React.FC = () => {
           {currentView === 'quotes' && <CommercialQuotesView orgId={currentOrgId} />}
 
           {currentView === 'report' && (
-            <ReportView data={overviewData} orgName={currentOrg?.name || 'Entreprise Marocaine'} />
+            <ReportView
+              data={overviewData}
+              orgName={currentOrg?.name || 'Entreprise Marocaine'}
+              currentOrgId={currentOrgId}
+              lang={lang}
+            />
+          )}
+
+          {currentView === 'academy' && (
+            <AcademyView lang={lang} onNavigateAction={(view) => setCurrentView(view)} />
+          )}
+
+          {currentView === 'public_content' && (
+            <PublicContentView lang={lang} onSelectAction={(view) => setCurrentView(view)} />
           )}
         </div>
       </main>

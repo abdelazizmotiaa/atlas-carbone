@@ -264,6 +264,117 @@ export function initDatabaseSchema() {
       sent_at TEXT NOT NULL
     );
 
+    -- 14. Sessions d'essai sans compte (Essayer sans compte)
+    CREATE TABLE IF NOT EXISTS guest_sessions (
+      id TEXT PRIMARY KEY,
+      session_token TEXT UNIQUE NOT NULL,
+      company_name TEXT NOT NULL,
+      sector TEXT NOT NULL,
+      activities_json TEXT NOT NULL DEFAULT '[]',
+      unquantified_json TEXT NOT NULL DEFAULT '[]',
+      summary_json TEXT,
+      expires_at TEXT NOT NULL,
+      claimed_at TEXT,
+      claimed_by_org_id TEXT REFERENCES organizations(id),
+      created_at TEXT NOT NULL
+    );
+
+    -- 15. Postes identifiés, non quantifiés (facteur manquant ou indisponible)
+    CREATE TABLE IF NOT EXISTS unquantified_activities (
+      id TEXT PRIMARY KEY,
+      reporting_period_id TEXT NOT NULL REFERENCES reporting_periods(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      site_id TEXT REFERENCES sites(id),
+      category TEXT NOT NULL,
+      label TEXT NOT NULL,
+      reason TEXT NOT NULL, -- 'facteur_manquant', 'donnee_non_disponible', 'en_attente_tiers'
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 16. Cycle de revue et gouvernance des dossiers
+    CREATE TABLE IF NOT EXISTS dossier_reviews (
+      id TEXT PRIMARY KEY,
+      reporting_period_id TEXT NOT NULL REFERENCES reporting_periods(id) ON DELETE CASCADE,
+      reviewer_id TEXT REFERENCES users(id),
+      reviewer_name TEXT NOT NULL,
+      status TEXT NOT NULL, -- 'draft', 'to_complete', 'ready_for_review', 'reviewed_internal', 'locked'
+      comment TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 17. Guides méthodologiques originaux (SEO & Pédagogie)
+    CREATE TABLE IF NOT EXISTS guides (
+      id TEXT PRIMARY KEY,
+      slug_fr TEXT UNIQUE NOT NULL,
+      slug_en TEXT UNIQUE NOT NULL,
+      title_fr TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      summary_fr TEXT NOT NULL,
+      summary_en TEXT NOT NULL,
+      content_fr TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      category TEXT NOT NULL,
+      reading_time_minutes INTEGER DEFAULT 5,
+      created_at TEXT NOT NULL
+    );
+
+    -- 18. Actualités et veille réglementaire
+    CREATE TABLE IF NOT EXISTS news_articles (
+      id TEXT PRIMARY KEY,
+      slug_fr TEXT UNIQUE NOT NULL,
+      slug_en TEXT UNIQUE NOT NULL,
+      title_fr TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      excerpt_fr TEXT NOT NULL,
+      excerpt_en TEXT NOT NULL,
+      content_fr TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      category TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'published', -- 'draft', 'published', 'archived'
+      author TEXT NOT NULL DEFAULT 'Abdelaziz Motiaa',
+      sources_json TEXT,
+      published_at TEXT NOT NULL,
+      updated_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 19. Newsletter avec double opt-in & désinscription
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      lang TEXT NOT NULL DEFAULT 'fr',
+      status TEXT NOT NULL DEFAULT 'pending_confirmation', -- 'pending_confirmation', 'confirmed', 'unsubscribed', 'suppressed'
+      confirmation_token TEXT UNIQUE NOT NULL,
+      confirmed_at TEXT,
+      unsubscribed_at TEXT,
+      consent_proof_ip TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 20. Modules pédagogiques de l'Académie Bilan Carbone
+    CREATE TABLE IF NOT EXISTS academy_modules (
+      id TEXT PRIMARY KEY,
+      module_number INTEGER NOT NULL,
+      title_fr TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      summary_fr TEXT NOT NULL,
+      summary_en TEXT NOT NULL,
+      content_fr TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      example_fr TEXT NOT NULL,
+      example_en TEXT NOT NULL,
+      quiz_question_fr TEXT NOT NULL,
+      quiz_question_en TEXT NOT NULL,
+      quiz_options_fr TEXT NOT NULL, -- JSON
+      quiz_options_en TEXT NOT NULL, -- JSON
+      quiz_correct_index INTEGER NOT NULL,
+      quiz_explanation_fr TEXT NOT NULL,
+      quiz_explanation_en TEXT NOT NULL,
+      action_link TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- Index d'optimisation
     CREATE INDEX IF NOT EXISTS idx_activity_records_period ON activity_records(reporting_period_id);
     CREATE INDEX IF NOT EXISTS idx_activity_records_org ON activity_records(organization_id);
@@ -271,5 +382,8 @@ export function initDatabaseSchema() {
     CREATE INDEX IF NOT EXISTS idx_emission_factors_cat ON emission_factors(category);
     CREATE INDEX IF NOT EXISTS idx_cbam_products_org ON cbam_products(organization_id);
     CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_events(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_guest_sessions_token ON guest_sessions(session_token);
+    CREATE INDEX IF NOT EXISTS idx_news_status ON news_articles(status);
+    CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
   `);
 }

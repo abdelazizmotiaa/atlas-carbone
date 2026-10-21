@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: atlas-carbone
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: Africa/Casablanca
+      - key: JWT_SECRET
+        generateValue: true

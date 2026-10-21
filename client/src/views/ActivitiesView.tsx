@@ -56,9 +56,17 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [formSupplier, setFormSupplier] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
-  // Facteurs pour la sélection
-  const [availableFactors, setAvailableFactors] = useState<EmissionFactor[]>([]);
+  // Options d'activités sécurisées (sans divulgation des facteurs bruts)
+  const [availableFactors, setAvailableFactors] = useState<any[]>([]);
   const [factorSearch, setFactorSearch] = useState('');
+
+  // Postes non quantifiés (Règle de rigueur)
+  const [unquantified, setUnquantified] = useState<any[]>([]);
+  const [showUnqModal, setShowUnqModal] = useState(false);
+  const [unqLabel, setUnqLabel] = useState('');
+  const [unqCategory, setUnqCategory] = useState('Énergie');
+  const [unqReason, setUnqReason] = useState('Poste identifié, non quantifié : facteur disponible insuffisant');
+  const [unqNotes, setUnqNotes] = useState('');
 
   // Modal "Voir le calcul"
   const [selectedTrace, setSelectedTrace] = useState<CalculationTrace | null>(null);
@@ -82,25 +90,58 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     }
   };
 
+  const fetchUnquantified = async () => {
+    try {
+      const data = await api.activities.listUnquantified(orgId, periodId);
+      setUnquantified(data);
+    } catch (e) {
+      console.error("Erreur non quantifiés:", e);
+    }
+  };
+
   const fetchFactors = async () => {
     try {
-      const data = await api.factors.search({ q: factorSearch });
+      const data = await api.activities.getCatalogOptions({ q: factorSearch });
       setAvailableFactors(data);
       if (data.length > 0 && !formFactorId) {
         setFormFactorId(data[0].id);
+        setFormUnit(data[0].expected_unit || 'kWh');
       }
     } catch (e) {
-      console.error("Erreur facteurs:", e);
+      console.error("Erreur options d'activités:", e);
     }
   };
 
   useEffect(() => {
     fetchActivities();
+    fetchUnquantified();
   }, [orgId, periodId]);
 
   useEffect(() => {
     fetchFactors();
   }, [factorSearch]);
+
+  const handleCreateUnquantified = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unqLabel.trim()) return;
+    try {
+      await api.activities.createUnquantified(orgId, {
+        reporting_period_id: periodId,
+        site_id: formSiteId || sites[0]?.id,
+        category: unqCategory,
+        label: unqLabel.trim(),
+        reason: unqReason,
+        notes: unqNotes
+      });
+      setShowUnqModal(false);
+      setUnqLabel('');
+      setUnqNotes('');
+      fetchUnquantified();
+      onRefreshOverview();
+    } catch (err: any) {
+      alert("Erreur enregistrement : " + err.message);
+    }
+  };
 
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,7 +288,16 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           </select>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowUnqModal(true)}
+            disabled={isPeriodClosed}
+            className="px-3.5 py-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5 disabled:opacity-50"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-700" />
+            <span>Déclarer un poste non quantifié</span>
+          </button>
+
           <button
             onClick={() => setShowImportModal(true)}
             disabled={isPeriodClosed}
@@ -373,6 +423,43 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Section Postes identifiés, non quantifiés */}
+      {unquantified.length > 0 && (
+        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-amber-900 font-bold text-xs uppercase tracking-wide">
+              <AlertCircle className="w-4 h-4 text-amber-700" />
+              <span>Postes identifiés, non quantifiés ({unquantified.length})</span>
+            </div>
+            <span className="text-[11px] text-amber-800 italic">
+              Conformité méthodologique : aucun zéro factice
+            </span>
+          </div>
+          <div className="border border-amber-200 rounded-xl overflow-hidden bg-white">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-amber-100/60 text-amber-900 font-bold text-[11px] border-b border-amber-200">
+                <tr>
+                  <th className="py-2.5 px-4">Poste / Activité déclarée</th>
+                  <th className="py-2.5 px-4">Catégorie</th>
+                  <th className="py-2.5 px-4">Motif de non-quantification</th>
+                  <th className="py-2.5 px-4">Observations</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-100">
+                {unquantified.map((u, i) => (
+                  <tr key={i} className="hover:bg-amber-50/40">
+                    <td className="py-2.5 px-4 font-bold text-slate-900">{u.label}</td>
+                    <td className="py-2.5 px-4 text-slate-600">{u.category}</td>
+                    <td className="py-2.5 px-4 text-amber-800 italic font-medium">{u.reason}</td>
+                    <td className="py-2.5 px-4 text-slate-500 text-[11px]">{u.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Modal / Tiroir "Voir le calcul" */}
       {selectedTrace && (
@@ -525,20 +612,24 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Facteur d'émission associé *</label>
+                <label className="block font-bold text-slate-700 mb-1">Activité type / Facteur officiel associé *</label>
                 <select
                   value={formFactorId}
-                  onChange={e => setFormFactorId(e.target.value)}
+                  onChange={e => {
+                    setFormFactorId(e.target.value);
+                    const found = availableFactors.find((f: any) => f.id === e.target.value);
+                    if (found) setFormUnit(found.expected_unit || found.denominator_unit || 'kWh');
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                 >
-                  {availableFactors.slice(0, 50).map(f => (
+                  {availableFactors.slice(0, 100).map(f => (
                     <option key={f.id} value={f.id}>
-                      [{f.id}] {f.name} ({f.value} {f.numerator_unit}/{f.denominator_unit}) - Scope {f.scope}
+                      [{f.id}] {f.label || f.name} (Scope {f.scope} • {f.expected_unit || f.denominator_unit})
                     </option>
                   ))}
                 </select>
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  670 facteurs marocains disponibles dans le catalogue officiel.
+                  Sélection sécurisée : calcul déterministe certifié exécuté côté serveur.
                 </span>
               </div>
 
@@ -637,6 +728,103 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 Lancer l'import et calculer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Déclarer un poste non quantifié */}
+      {showUnqModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-amber-700" />
+                <h3 className="font-bold text-slate-900 text-sm">Déclarer un poste non quantifié</h3>
+              </div>
+              <button onClick={() => setShowUnqModal(false)} className="p-1 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Règle de rigueur : une absence d'activité confirmée doit être distinguée d'une donnée manquante. Ce poste figurera dans votre rapport d'inventaire avec son motif sans affectation de zéro factice.
+            </p>
+
+            <form onSubmit={handleCreateUnquantified} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Désignation de l'activité *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ex: Fret sous-traité maritime Asie"
+                  value={unqLabel}
+                  onChange={e => setUnqLabel(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catégorie</label>
+                <select
+                  value={unqCategory}
+                  onChange={e => setUnqCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none"
+                >
+                  <option value="Énergie">Énergie & Combustion</option>
+                  <option value="Transport">Transport & Fret</option>
+                  <option value="Achats">Achats & Matières premières</option>
+                  <option value="Déchets">Déchets</option>
+                  <option value="Fugitives">Émissions fugitives / Froid</option>
+                  <option value="Autre">Autre poste</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Motif de non-quantification</label>
+                <select
+                  value={unqReason}
+                  onChange={e => setUnqReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none"
+                >
+                  <option value="Poste identifié, non quantifié : facteur disponible insuffisant">
+                    Poste identifié, non quantifié : facteur disponible insuffisant
+                  </option>
+                  <option value="Données d'activité de consommation non disponibles">
+                    Données d'activité de consommation non disponibles
+                  </option>
+                  <option value="En attente de transmission par le tiers ou fournisseur">
+                    En attente de transmission par le tiers ou fournisseur
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Observations / Justification</label>
+                <textarea
+                  rows={2}
+                  placeholder="Précisez la démarche de collecte en cours..."
+                  value={unqNotes}
+                  onChange={e => setUnqNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowUnqModal(false)}
+                  className="px-3.5 py-1.5 border border-slate-300 text-slate-700 font-semibold rounded-xl"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-sm"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

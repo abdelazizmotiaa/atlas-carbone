@@ -1,0 +1,20 @@
+{
+  "name": "atlas-carbone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plateforme SaaS B2B souveraine de comptabilité carbone & conformité MACF Maroc",
+  "scripts": {
+    "build": "cd client && npm install && npm run build && cd ../server && npm install",
+    "start": "cd server && npm run start"
+  },
+  "keywords": [
+    "bilan-carbone",
+    "maroc",
+    "cbam",
+    "macf",
+    "ghg-protocol",
+    "iso14064"
+  ],
+  "author": "Abdelaziz Motiaa",
+  "license": "ISC"
+}

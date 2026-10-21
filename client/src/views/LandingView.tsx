@@ -23,12 +23,27 @@ import {
   Sparkles
 } from 'lucide-react';
 import { api, setStoredToken, setStoredOrgId } from '../api.js';
+import { Language, translations } from '../i18n.js';
 
 interface LandingViewProps {
   onLoginSuccess: (user: any, orgs: any[]) => void;
+  lang?: Language;
+  onLanguageChange?: (lang: Language) => void;
+  onStartTrial?: () => void;
+  onOpenAcademy?: () => void;
+  onOpenContent?: (tab: 'guides' | 'news') => void;
 }
 
-export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
+export const LandingView: React.FC<LandingViewProps> = ({
+  onLoginSuccess,
+  lang = 'fr',
+  onLanguageChange,
+  onStartTrial,
+  onOpenAcademy,
+  onOpenContent
+}) => {
+  const t = translations[lang];
+
   // Demo login state
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -103,12 +118,41 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
     }
   };
 
+  // Newsletter subscription state
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+  const [newsletterMsg, setNewsletterMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterConsent) {
+      setNewsletterMsg({
+        type: 'error',
+        text: lang === 'en' ? 'Please confirm your consent before subscribing.' : 'Veuillez cocher la case de consentement.'
+      });
+      return;
+    }
+    setNewsletterLoading(true);
+    setNewsletterMsg(null);
+    try {
+      const res = await api.newsletter.subscribe(newsletterEmail, lang || 'fr');
+      setNewsletterMsg({ type: 'success', text: res.message });
+      setNewsletterEmail('');
+      setNewsletterConsent(false);
+    } catch (err: any) {
+      setNewsletterMsg({ type: 'error', text: err.message || "Erreur lors de l'inscription." });
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
       {/* Barre de navigation */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="w-10 h-10 rounded-xl bg-brand-900 text-brand-300 flex items-center justify-center shadow-md">
               <Globe2 className="w-6 h-6 text-brand-400" />
             </div>
@@ -116,31 +160,69 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
               <span className="text-xl font-bold tracking-tight text-slate-900">
                 Atlas <span className="text-brand-700">Carbone</span>
               </span>
-              <span className="block text-xs text-slate-500 font-medium">Comptabilité GES & Conformité MACF Maroc</span>
+              <span className="block text-xs text-slate-500 font-medium">
+                {lang === 'en' ? 'GHG Accounting & CBAM Morocco' : 'Comptabilité GES & Conformité MACF Maroc'}
+              </span>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
-            <a href="#solutions" className="hover:text-brand-800 transition">Solutions Métier</a>
-            <a href="#simulateur" className="hover:text-brand-800 transition">Simulateur</a>
-            <a href="#macf" className="hover:text-brand-800 transition">Export Europe (MACF)</a>
-            <a href="#methodologie" className="hover:text-brand-800 transition">Méthodologie & Données</a>
-            <a href="#tarifs" className="hover:text-brand-800 transition">Tarifs & Devis</a>
-            <a href="#contact" className="hover:text-brand-800 transition">Contact</a>
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-slate-600">
+            <a href="#solutions" className="hover:text-brand-800 transition">
+              {lang === 'en' ? 'Sector Solutions' : 'Solutions Métier'}
+            </a>
+            {onOpenAcademy && (
+              <button onClick={onOpenAcademy} className="hover:text-brand-800 transition font-medium flex items-center space-x-1 text-brand-900">
+                <span>{lang === 'en' ? 'Carbon Academy' : 'Académie Carbone'}</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-brand-100 text-brand-800 font-bold">10 cours</span>
+              </button>
+            )}
+            {onOpenContent && (
+              <>
+                <button onClick={() => onOpenContent('guides')} className="hover:text-brand-800 transition">
+                  {lang === 'en' ? 'Guides' : 'Guides'}
+                </button>
+                <button onClick={() => onOpenContent('news')} className="hover:text-brand-800 transition">
+                  {lang === 'en' ? 'Regulatory News' : 'Actualités'}
+                </button>
+              </>
+            )}
+            <a href="#simulateur" className="hover:text-brand-800 transition">
+              {lang === 'en' ? 'Simulator' : 'Simulateur'}
+            </a>
+            <a href="#contact" className="hover:text-brand-800 transition">
+              {lang === 'en' ? 'Contact' : 'Contact'}
+            </a>
           </nav>
 
           <div className="flex items-center space-x-3">
+            {/* Language Switcher */}
+            {onLanguageChange && (
+              <button
+                onClick={() => onLanguageChange(lang === 'fr' ? 'en' : 'fr')}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center space-x-1"
+                title={lang === 'fr' ? 'Switch to English' : 'Passer en Français'}
+              >
+                <Globe2 className="w-3.5 h-3.5 text-brand-700" />
+                <span>{lang === 'fr' ? 'EN' : 'FR'}</span>
+              </button>
+            )}
+
+            {/* Essayer sans compte (Hero Action 1) */}
+            {onStartTrial && (
+              <button
+                onClick={onStartTrial}
+                className="px-4 py-2 text-sm font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-lg border border-emerald-300 shadow-sm transition flex items-center space-x-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-700" />
+                <span>{lang === 'en' ? 'Try Without Account' : 'Essayer sans compte'}</span>
+              </button>
+            )}
+
             <a
               href="#demo-accounts"
-              className="px-4 py-2 text-sm font-semibold text-brand-900 bg-brand-50 hover:bg-brand-100 rounded-lg border border-brand-200 transition"
+              className="px-3.5 py-2 text-sm font-semibold text-white bg-brand-800 hover:bg-brand-900 rounded-lg shadow-sm transition"
             >
-              Comptes Démo 1-Clic
-            </a>
-            <a
-              href="#contact"
-              className="px-4 py-2 text-sm font-semibold text-white bg-brand-800 hover:bg-brand-900 rounded-lg shadow-sm transition"
-            >
-              Demander un devis
+              {lang === 'en' ? 'Workspace / Login' : 'Espace Entreprise'}
             </a>
           </div>
         </div>
@@ -171,19 +253,22 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
               </p>
 
               <div className="pt-2 flex flex-wrap gap-4">
+                {onStartTrial && (
+                  <button
+                    onClick={onStartTrial}
+                    className="inline-flex items-center space-x-2 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition"
+                  >
+                    <Sparkles className="w-5 h-5 text-emerald-200" />
+                    <span>{lang === 'en' ? 'Try Without Account (Guest)' : 'Essayer sans compte (Session invité)'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
                 <a
                   href="#demo-accounts"
                   className="inline-flex items-center space-x-2 px-6 py-3.5 bg-brand-800 hover:bg-brand-900 text-white font-semibold rounded-xl shadow-md transition"
                 >
-                  <span>Tester la plateforme (Démo interactive)</span>
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-                <a
-                  href="#simulateur"
-                  className="inline-flex items-center space-x-2 px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-300 shadow-sm transition"
-                >
-                  <Calculator className="w-4 h-4 text-brand-700" />
-                  <span>Calculateur instantané</span>
+                  <Building2 className="w-4 h-4 text-brand-300" />
+                  <span>{lang === 'en' ? 'Create Company Space / Login' : 'Créer mon espace entreprise'}</span>
                 </a>
               </div>
 
@@ -195,7 +280,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <FileCheck2 className="w-5 h-5 text-brand-600 shrink-0" />
-                  <span className="text-xs font-medium text-slate-700">670 Facteurs Maroc (FM6E/ADEME)</span>
+                  <span className="text-xs font-medium text-slate-700">Catalogue National Marocain</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Globe2 className="w-5 h-5 text-brand-600 shrink-0" />
@@ -270,6 +355,117 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section Clarté Pédagogique Immédiate (Conforme Section 2 du Prompt Maître) */}
+      <section className="py-16 bg-slate-900 text-slate-100 border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-400">
+              {lang === 'en' ? 'Methodological Transparency' : 'Transparence & Pédagogie Immédiate'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-2">
+              {lang === 'en' ? 'Everything you need to know before starting' : 'Ce que vous devez savoir avant de commencer'}
+            </h2>
+            <p className="text-sm text-slate-400 mt-2">
+              {lang === 'en'
+                ? 'No prior carbon footprint expertise required. We guide you step by step through your operational reality.'
+                : 'Aucune expertise préalable requise. Nous vous guidons pas à pas selon votre réalité opérationnelle.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. À qui s'adresse Atlas Carbone */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'Who is Atlas Carbone for?' : "À qui s'adresse Atlas Carbone ?"}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Moroccan SMEs, multi-site industrial groups, and exporters subject to customer supply chain audits or EU CBAM requirements.'
+                  : "Aux PME marocaines, groupes industriels multisites et exportateurs vers l'UE soumis aux audits carbone de leurs clients ou au MACF."}
+              </p>
+            </div>
+
+            {/* 2. Ce qu'il faut préparer */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <FileText className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'What should you prepare?' : "Ce qu'il faut préparer"}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'ONEE electricity invoices (kWh), fuel receipts or fleet cards (liters), gas invoices (kWh NCV), and procurement registers (raw materials, freight).'
+                  : 'Factures ONEE (kWh), tickets ou cartes carburant (litres gasoil/essence), factures de gaz (kWh PCI) et registres d’achats (matières premières, fret).'}
+              </p>
+            </div>
+
+            {/* 3. Ce que le logiciel calcule */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                <Calculator className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'What does the engine calculate?' : 'Ce que le moteur calcule'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Scopes 1, 2, and 3 under ISO 14064-1 & GHG Protocol, location-based/market-based electricity, and specific embedded CBAM emissions without AI approximations.'
+                  : 'Scopes 1, 2 et 3 selon ISO 14064-1 et GHG Protocol, distinction location-based / market-based, et intensité spécifique MACF, de manière 100% déterministe.'}
+              </p>
+            </div>
+
+            {/* 4. Ce que vous trouverez dans votre rapport */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                <FileCheck2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'What is in your final report?' : 'Ce que contient votre rapport'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Executive summary, detailed graphs by site and scope, uncertainty intervals, traceable methodological annex of mobilized factors, and action plan.'
+                  : 'Synthèse exécutif, graphiques détaillés par poste et site, incertitudes globales, annexe méthodologique traçable des facteurs mobilisés et plan de transition.'}
+              </p>
+            </div>
+
+            {/* 5. Comment vos données sont protégées */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+                <Lock className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'How are your data protected?' : 'Protection stricte de vos données'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Strict multi-tenant DB isolation, server-side factor confidentiality, isolated temporary guest sessions, and compliance with Moroccan Law 09-08 (CNDP).'
+                  : 'Isolation stricte par entreprise en base sécurisée WAL, catalogue de facteurs protégé côté serveur, sessions temporaires chiffrées et conformité Loi 09-08.'}
+              </p>
+            </div>
+
+            {/* 6. Limites méthodologiques transparentes */}
+            <div className="bg-slate-800/80 p-6 rounded-2xl border border-slate-700 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? 'Transparent methodological limits' : 'Limites méthodologiques claires'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'An empty field is never zero. Missing factors are explicitly flagged as unquantified. Software checks do not substitute for an accredited ISO 14065 audit.'
+                  : 'Un champ vide n’est jamais zéro. Les postes sans facteur adapté sont déclarés non quantifiés. Le logiciel ne remplace pas un audit accrédité ISO 14065.'}
+              </p>
             </div>
           </div>
         </div>
@@ -692,63 +888,173 @@ export const LandingView: React.FC<LandingViewProps> = ({ onLoginSuccess }) => {
 
                 <div className="pt-2 flex items-center justify-between">
                   <span className="text-xs text-slate-500">
-                    Vos données personnelles sont traitées conformément à la loi 09-08 (CNDP).
+                    {lang === 'en'
+                      ? 'Your data is strictly processed according to Moroccan Law 09-08 (CNDP).'
+                      : 'Vos données personnelles sont traitées conformément à la loi 09-08 (CNDP).'}
                   </span>
                   <button
                     type="submit"
                     disabled={leadLoading}
                     className="px-6 py-2.5 bg-brand-800 hover:bg-brand-900 text-white font-semibold text-sm rounded-lg shadow transition"
                   >
-                    {leadLoading ? 'Envoi en cours...' : 'Envoyer ma demande'}
+                    {leadLoading ? (lang === 'en' ? 'Sending...' : 'Envoi en cours...') : (lang === 'en' ? 'Send Request' : 'Envoyer ma demande')}
                   </button>
                 </div>
               </form>
             )}
+
+            {/* Coordonnées Directes du Contact Référent */}
+            <div className="mt-8 pt-8 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-medium block">{lang === 'en' ? 'Direct Contact' : 'Contact Référent'}</span>
+                <span className="font-bold text-slate-900 text-sm mt-0.5 block">Abdelaziz Motiaa</span>
+                <span className="text-slate-500 text-[11px]">{lang === 'en' ? 'Project Lead — Atlas Carbone' : 'Responsable Projet — Atlas Carbone'}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-medium block">{lang === 'en' ? 'Direct Email' : 'Email Direct'}</span>
+                <a
+                  href="mailto:abdelaziz.motiaa@gmail.com"
+                  className="font-bold text-brand-800 hover:text-brand-900 hover:underline text-sm mt-0.5 block truncate"
+                >
+                  abdelaziz.motiaa@gmail.com
+                </a>
+                <span className="text-slate-500 text-[11px]">{lang === 'en' ? 'Response within 24h' : 'Réponse sous 24h'}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500 font-medium block">{lang === 'en' ? 'Direct Phone' : 'Téléphone Direct'}</span>
+                <a
+                  href="tel:+212671581167"
+                  className="font-bold text-brand-800 hover:text-brand-900 hover:underline text-sm mt-0.5 block"
+                >
+                  +212 6 71 58 11 67
+                </a>
+                <span className="text-slate-500 text-[11px]">{lang === 'en' ? 'Casablanca (GMT+1)' : 'Casablanca (GMT+1)'}</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* Section Newsletter Réglementaire Bilingue (Double Opt-In) */}
+      <section className="py-14 bg-brand-900 text-white border-b border-brand-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-800 text-brand-300 text-xs font-semibold">
+            <Mail className="w-3.5 h-3.5" />
+            <span>{lang === 'en' ? 'Morocco Carbon Watch & CBAM' : 'Veille Réglementaire Carbone Maroc & MACF'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+            {lang === 'en'
+              ? 'Stay ahead of EU & Moroccan environmental regulations'
+              : 'Restez informé des évolutions réglementaires et facteurs d’émission'}
+          </h2>
+          <p className="text-xs sm:text-sm text-brand-200 max-w-2xl mx-auto">
+            {lang === 'en'
+              ? 'Receive verified analyses on Moroccan emission factors, EU CBAM definitive rules, and decarbonization subsidies. Zero spam, unsubscribe in 1 click.'
+              : 'Recevez des analyses vérifiées sur les facteurs d’émissions nationaux, le calendrier MACF et les aides à la décarbonation. Pas de spam, désinscription en 1 clic.'}
+          </p>
+
+          <form onSubmit={handleNewsletterSubmit} className="max-w-xl mx-auto pt-4 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="email"
+                required
+                value={newsletterEmail}
+                onChange={e => setNewsletterEmail(e.target.value)}
+                placeholder={lang === 'en' ? 'your.email@company.ma' : 'votre.email@entreprise.ma'}
+                className="flex-1 px-4 py-3 rounded-xl bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              />
+              <button
+                type="submit"
+                disabled={newsletterLoading}
+                className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-emerald-950 font-bold text-sm shadow transition shrink-0"
+              >
+                {newsletterLoading
+                  ? (lang === 'en' ? 'Subscribing...' : 'Inscription...')
+                  : (lang === 'en' ? 'Subscribe' : "M'inscrire")}
+              </button>
+            </div>
+
+            <label className="flex items-start space-x-2 text-left text-xs text-brand-200 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={newsletterConsent}
+                onChange={e => setNewsletterConsent(e.target.checked)}
+                className="mt-0.5 rounded border-brand-700 text-brand-500 focus:ring-0"
+              />
+              <span>
+                {lang === 'en'
+                  ? 'I consent to receiving regulatory watch emails (double opt-in verification required, distinct from account creation).'
+                  : 'J’accepte de recevoir la veille réglementaire (double opt-in avec email de confirmation, distinct de la création de compte).'}
+              </span>
+            </label>
+
+            {newsletterMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs text-center font-medium ${
+                  newsletterMsg.type === 'success'
+                    ? 'bg-emerald-900/60 border border-emerald-500/50 text-emerald-200'
+                    : 'bg-rose-900/60 border border-rose-500/50 text-rose-200'
+                }`}
+              >
+                {newsletterMsg.text}
+              </div>
+            )}
+          </form>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-xs">
+      <footer className="bg-slate-950 text-slate-400 py-12 border-t border-slate-800 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <span className="text-lg font-bold text-white">Atlas Carbone</span>
+            <span className="text-lg font-bold text-white tracking-tight">Atlas Carbone</span>
             <p className="mt-2 text-slate-400 leading-relaxed">
               Plateforme SaaS marocaine de comptabilité carbone et de conformité aux exigences export européennes.
             </p>
-            <p className="mt-4 text-slate-500">Casablanca — Royaume du Maroc</p>
+            <div className="mt-4 space-y-1 text-slate-400">
+              <p>👤 <strong>Abdelaziz Motiaa</strong></p>
+              <p>
+                ✉️ <a href="mailto:abdelaziz.motiaa@gmail.com" className="text-brand-400 hover:underline">abdelaziz.motiaa@gmail.com</a>
+              </p>
+              <p>
+                📞 <a href="tel:+212671581167" className="text-brand-400 hover:underline">+212 6 71 58 11 67</a>
+              </p>
+              <p className="text-slate-500 pt-1">Casablanca — Royaume du Maroc</p>
+            </div>
           </div>
 
           <div>
-            <h4 className="font-bold text-white mb-3">Référentiels Métier</h4>
-            <ul className="space-y-1.5">
+            <h4 className="font-bold text-white mb-3">Référentiels & Sources Facteurs</h4>
+            <ul className="space-y-1.5 text-slate-400">
               <li>GHG Protocol Corporate Standard</li>
               <li>ISO 14064-1:2018 & ISO 14069</li>
-              <li>Base Carbone Maroc (FM6E/AMEE)</li>
-              <li>Règlement UE MACF 2023/956 révisé</li>
+              <li>Classeur National Marocain (FM6E/ADEME/ABC)</li>
+              <li>Règlement UE MACF 2023/956 régime définitif</li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-bold text-white mb-3">Mentions Légales & Confidentialité</h4>
-            <ul className="space-y-1.5">
-              <li>Conformité Loi 09-08 (Protection des Données - CNDP)</li>
-              <li>Hébergement persistant sécurisé</li>
-              <li>Chiffrement TLS & Piste d'audit immuable</li>
-              <li>Politique de cookies sans trackers tiers</li>
+            <h4 className="font-bold text-white mb-3">Sécurité & Confidentialité</h4>
+            <ul className="space-y-1.5 text-slate-400">
+              <li>Conformité Loi 09-08 (CNDP)</li>
+              <li>Hébergement persistant SQLite en mode WAL</li>
+              <li>Isolation étanche des données multi-entreprises</li>
+              <li>Catalogue et formules protégés côté serveur</li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-white mb-3">Avertissement Méthodologique</h4>
             <p className="text-slate-400 leading-relaxed">
-              Atlas Carbone est un outil indépendant de comptabilité carbone. L'utilisation du logiciel ne confère pas à
-              elle seule une certification officielle sans audit par un tiers accrédité.
+              Atlas Carbone est un outil indépendant de calcul et de pilotage. Il n’est pas un organisme officiel de
+              l’État marocain, de la FM6E, de l’AMEE ou de l’ABC. Les calculs logiciels ne remplacent pas un audit de
+              certification officiel par un tiers vérificateur accrédité ISO 14065.
             </p>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-800 text-center text-slate-500">
-          © 2026 Atlas Carbone. Tous droits réservés. Version opérationnelle 1.0.
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-[11px]">
+          <span>© 2026 Atlas Carbone. Tous droits réservés. Développé par Abdelaziz Motiaa.</span>
+          <span className="mt-2 sm:mt-0 font-mono">Conformité ISO 14064-1 & MACF 2026</span>
         </div>
       </footer>
     </div>

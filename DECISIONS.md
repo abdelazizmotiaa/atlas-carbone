@@ -88,3 +88,87 @@ Ce document consigne les décisions techniques, méthodologiques et réglementai
   - Monnaie par défaut : Dirham marocain (MAD) avec séparateur conforme et formats français. Affichage optionnel en EUR pour les modules Export.
   - Trois offres configurables : *Essentiel*, *Entreprise*, *Export Europe*.
   - En l'absence de contrat marchand CMI ou passerelle agréée au Maroc, le système implémente un environnement sandbox clair et un flux commercial complet par génération de devis PDF/HTML et validation manuelle tracée des règlements par virement bancaire.
+
+---
+
+## 7. Protection et Confidentialité du Catalogue de Facteurs (AD-007)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - L'accès complet au catalogue brut (`GET /api/factors`) est strictement restreint aux utilisateurs disposant du privilège `super_admin`.
+  - Pour les entreprises locataires et les visiteurs en essai, un endpoint filtré (`GET /api/activities/catalog-options`) ne renvoie que l'identifiant d'activité, les libellés FR/EN, l'unité attendue, la catégorie et des conseils de saisie, sans jamais divulguer les facteurs numériques ni les formules de pondération.
+  - Les calculs d'émissions sont exclusivement réalisés côté serveur.
+  - Une annexe méthodologique restreinte (`GET /api/organizations/:orgId/periods/:periodId/methodological-annex`) ne révèle que les métadonnées et sources des facteurs réellement mobilisés lors d'un exercice pour permettre la revue d'audit.
+  - Reconnaissance explicite des droits d'auteur tiers (ADEME, ABC, Fondation Mohammed VI pour l'Environnement, AMEE, IMANOR) sans revendication indue de propriété exclusive.
+
+---
+
+## 8. Parcours d'Essai sans Compte & Transfert Sécurisé (AD-008)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Mise à disposition immédiate d'un essai sans inscription préalable (« Essayer sans compte »).
+  - Génération d'une session invitée isolée avec jeton cryptographique aléatoire de 32 octets et durée de validité (TTL) de 7 jours.
+  - Exécution des calculs sur le moteur déterministe réel et génération d'un rapport préliminaire téléchargeable précisant la couverture partielle des données.
+  - Fonctionnalité « Créer mon compte et conserver mon bilan » assurant le transfert atomique du dossier invité vers l'organisation permanente créée ou existante, sous vérification cryptographique de la possession du jeton d'invité.
+
+---
+
+## 9. Questionnaire Progressif & Profils Sectoriels Marocains (AD-009)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Formulation des questions en langage naturel (« Électricité de vos locaux », « Carburant de votre flotte », « Fluides frigorigènes », etc.) sans présupposer la connaissance des scopes.
+  - 8 profils sectoriels ciblés : Industrie exportatrice/métallurgie/ciment, Textile, Agroalimentaire, Transport, Construction/BTP, Hôtellerie, Services, Agriculture.
+  - 4 options de réponse explicites : `Oui`, `Non concerné`, `Je ne sais pas encore`, `À compléter`.
+  - Tout poste identifié mais dépourvu de facteur d'émission validé dans le classeur Excel est consigné comme « Poste identifié, non quantifié : facteur disponible insuffisant » et documenté dans le rapport (interdiction absolue d'affecter la valeur zéro par défaut).
+
+---
+
+## 10. Pédagogie Intégrée & Académie Bilan Carbone (AD-010)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Intégration de 10 micro-modules d'apprentissage originaux inspirés de la démarche pédagogique du support de formation FM6E/ADEME/ABC (juin 2026).
+  - Chaque module comprend une explication concise, un cas d'application concret, une question d'auto-évaluation et un raccourci d'action dans l'outil.
+  - Glossaire bilingue FR/EN accessible en permanence.
+  - Mention explicite distinguant les contrôles de cohérence internes du logiciel d'un audit de tierce partie indépendante accrédité selon la norme ISO 14065.
+
+---
+
+## 11. Moteur de Génération PDF Serveur Bilingue (AD-011)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Utilisation d'un moteur de génération de documents PDF natif côté serveur en Node.js (`pdfkit`), sans dépendances système externes ni lancement de navigateur lourd en production.
+  - Génération de rapports bilingues français / anglais présentant strictement les mêmes valeurs chiffrées, la ventilation par scope et par poste, l'intervalle d'incertitude 95%, le relevé des postes non quantifiés, le plan de transition et le bloc de signature.
+
+---
+
+## 12. Bilinguisme Intégral FR/EN & SEO Prerendering (AD-012)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Prise en charge intégrale de la langue française (primaire) et de la langue anglaise (secondaire complète).
+  - Routage public explicite avec préfixes `/fr/` et `/en/`, balises `hreflang` réciproques, balises `canonical` et `sitemap.xml`.
+  - Prerendering HTML des pages publiques pour un indexage robot optimal et affichage immédiat sans latence de script.
+  - Coordonnées publiques d'Abdelaziz Motiaa (`abdelaziz.motiaa@gmail.com`, `+212671581167`) insérées avec des liens fonctionnels `mailto:` et `tel:`.
+
+---
+
+## 13. Assistant Gemini Optionnel & Sandboxé (AD-013)
+
+- **Date :** 20 octobre 2026
+- **Statut :** Validé
+- **Décision :**
+  - Intégration d'un module d'assistance pédagogique Gemini facultatif.
+  - Rôle strictement consultatif : explication des questions, suggestion de catégories, aide à la recherche de justificatifs et synthèse qualitative.
+  - Aucune interaction avec le moteur de calcul mathématique, aucune écriture en base de données, aucun accès aux données d'autres organisations.
+  - Fonctionnement autonome à 100% garanti en cas d'absence ou d'invalidité de la clé `GEMINI_API_KEY`.
+
