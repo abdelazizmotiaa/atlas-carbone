@@ -90,6 +90,16 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
   const sectors = lang === 'en' ? sectorOptionsEn : sectorOptionsFr;
   const objectives = lang === 'en' ? objectiveOptionsEn : objectiveOptionsFr;
 
+  const handleFieldBlur = () => {
+    if ((formData.email || formData.phone) && formData.company && !submitted) {
+      fetch('/api/leads/intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }).catch(() => {});
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -221,6 +231,7 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
                   placeholder={lang === 'en' ? 'e.g., Atlas Agro SARL' : 'Ex : Atlas Industries SA'}
                   value={formData.company}
                   onChange={e => setFormData({ ...formData, company: e.target.value })}
+                  onBlur={handleFieldBlur}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none transition"
                 />
               </div>
@@ -239,6 +250,7 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
                   placeholder={lang === 'en' ? 'e.g., Karim Benjelloun (Managing Director)' : 'Ex : Karim Bennani (Directeur Général)'}
                   value={formData.full_name}
                   onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+                  onBlur={handleFieldBlur}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none transition"
                 />
               </div>
@@ -257,6 +269,7 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
                   placeholder="nom@entreprise.ma"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  onBlur={handleFieldBlur}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none transition"
                 />
               </div>
@@ -275,6 +288,7 @@ export const CompanyQualificationForm: React.FC<CompanyQualificationFormProps> =
                   placeholder="+212 6XX XX XX XX"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  onBlur={handleFieldBlur}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none transition"
                 />
               </div>

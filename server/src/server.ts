@@ -2383,6 +2383,102 @@ app.post('/api/leads/:id/meeting-booked', (req, res) => {
   }
 });
 
+// Enregistrer l'intention de réservation Calendly (clic sur réserver ou ouverture du modal)
+app.post('/api/leads/booking-intent', (req, res) => {
+  const { prefill, source = 'site' } = req.body || {};
+  const company = prefill?.company || 'Entreprise en cours de consultation';
+  const name = prefill?.name || 'Visiteur';
+  const email = prefill?.email || '';
+
+  sendNotificationEmail({
+    to: OFFICIAL_CONSULTANT_EMAIL,
+    subject: `[Atlas Carbone] 🔔 Intention de réservation Calendly ouverte !`,
+    templateName: 'booking_intent_alert',
+    html: `<h2>Un prospect s'apprête à réserver un créneau Calendly !</h2>
+     <p><strong>Source :</strong> ${source}</p>
+     ${name ? `<p><strong>Nom renseigné :</strong> ${name}</p>` : ''}
+     ${company ? `<p><strong>Entreprise :</strong> ${company}</p>` : ''}
+     ${email ? `<p><strong>Email :</strong> <a href="mailto:${email}">${email}</a></p>` : ''}
+     <p><em>Le prospect a ouvert le calendrier Calendly pour une consultation découverte de 30 minutes.</em></p>`
+  }).catch(e => console.warn("Erreur booking intent:", e));
+
+  res.json({ ok: true });
+});
+
+// Enregistrer la saisie en cours d'un prospect sur le formulaire
+app.post('/api/leads/intent', (req, res) => {
+  const { company, full_name, email, phone, sector, city } = req.body || {};
+  if (!email && !phone && !company) {
+    return res.json({ ok: false });
+  }
+
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanPhone = (phone || '').trim();
+  const cleanCompany = (company || '').trim() || 'Entreprise en cours';
+  const cleanName = (full_name || '').trim() || 'Contact';
+
+  // Vérifier si un lead existe déjà pour éviter le spam
+  const existingLead = cleanEmail
+    ? db.prepare(`SELECT id FROM leads WHERE email = ? LIMIT 1`).get(cleanEmail)
+    : cleanPhone
+    ? db.prepare(`SELECT id FROM leads WHERE phone = ? LIMIT 1`).get(cleanPhone)
+    : null;
+
+  if (!existingLead) {
+    const id = `lead-intent-${Date.now()}`;
+    const now = new Date().toISOString();
+    try {
+      db.prepare(`
+        INSERT INTO leads (
+          id, full_name, email, phone, company, sector, city, employee_count,
+          has_existing_bilan, main_objective, message, status, notes, meeting_booked,
+          utm_source, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Non spécifié', 'non', 'Formulaire en cours de remplissage', 'Lead partiel capturé', 'Nouveau', 'Saisie en cours sur le site', 0, 'saisie_en_cours', ?)
+      `).run(
+        id, cleanName, cleanEmail || 'non_renseigne', cleanPhone, cleanCompany,
+        sector || 'Non spécifié', city || '', now
+      );
+
+      sendNotificationEmail({
+        to: OFFICIAL_CONSULTANT_EMAIL,
+        subject: `[Atlas Carbone] 🔔 Prospect en cours de saisie — ${cleanCompany}`,
+        templateName: 'lead_typing_alert',
+        html: `<h2>Un prospect a commencé à remplir le formulaire de devis / bilan !</h2>
+         <p><strong>Entreprise :</strong> ${cleanCompany}</p>
+         <p><strong>Contact :</strong> ${cleanName}</p>
+         ${cleanEmail ? `<p><strong>Email :</strong> <a href="mailto:${cleanEmail}">${cleanEmail}</a></p>` : ''}
+         ${cleanPhone ? `<p><strong>Téléphone :</strong> <a href="tel:${cleanPhone}">${cleanPhone}</a> | <a href="https://wa.me/${cleanPhone.replace(/[^0-9]/g, '')}">WhatsApp</a></p>` : ''}
+         ${sector ? `<p><strong>Secteur :</strong> ${sector}</p>` : ''}
+         ${city ? `<p><strong>Ville :</strong> ${city}</p>` : ''}
+         <p><em>Coordonnées capturées en temps réel pendant la saisie.</em></p>`
+      }).catch(e => console.warn("Erreur lead typing alert:", e));
+    } catch (err) {
+      console.warn("Erreur insertion lead intent:", err);
+    }
+  }
+
+  res.json({ ok: true });
+});
+
+// Enregistrer la confirmation Calendly reçue via webhook / postMessage
+app.post('/api/leads/booking-scheduled', (req, res) => {
+  const { payload, prefill } = req.body || {};
+  sendNotificationEmail({
+    to: OFFICIAL_CONSULTANT_EMAIL,
+    subject: `[Atlas Carbone] 🎉 Nouveau rendez-vous Calendly confirmé !`,
+    templateName: 'booking_confirmed_alert',
+    html: `<h2>Rendez-vous Calendly confirmé avec succès !</h2>
+     <p>Un prospect vient de finaliser la réservation de son créneau de consultation de 30 minutes sur votre Calendly.</p>
+     ${prefill?.company ? `<p><strong>Entreprise :</strong> ${prefill.company}</p>` : ''}
+     ${prefill?.name ? `<p><strong>Responsable :</strong> ${prefill.name}</p>` : ''}
+     ${prefill?.email ? `<p><strong>Email :</strong> <a href="mailto:${prefill.email}">${prefill.email}</a></p>` : ''}
+     <p>Consultez votre agenda Google Calendar ou Calendly pour les détails du rendez-vous.</p>`
+  }).catch(e => console.warn("Erreur booking confirmed alert:", e));
+
+  res.json({ ok: true });
+});
+
 // Administration des Leads (CRM Simple)
 app.get('/api/admin/leads', authenticateToken, (req: any, res) => {
   // Accessible aux administrateurs plateforme ou d'organisation

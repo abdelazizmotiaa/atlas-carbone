@@ -30,13 +30,35 @@ export const CalendlyModal: React.FC<CalendlyModalProps> = ({
       document.body.style.overflow = 'hidden';
       setIframeLoaded(false);
       setHasError(false);
+
+      // Notification immédiate d'intention d'ouverture Calendly
+      fetch('/api/leads/booking-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefill, source: 'modal_calendly' })
+      }).catch(() => {});
     } else {
       document.body.style.overflow = 'auto';
     }
     return () => {
       document.body.style.overflow = 'auto';
     };
-  }, [isOpen]);
+  }, [isOpen, prefill]);
+
+  // Écoute des événements Calendly intégrés (réservation confirmée par le prospect)
+  useEffect(() => {
+    const handleCalendlyEvent = (e: MessageEvent) => {
+      if (e.data?.event === 'calendly.event_scheduled') {
+        fetch('/api/leads/booking-scheduled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload: e.data.payload, prefill })
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('message', handleCalendlyEvent);
+    return () => window.removeEventListener('message', handleCalendlyEvent);
+  }, [prefill]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
