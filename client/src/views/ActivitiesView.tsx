@@ -522,17 +522,17 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
             <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-slate-400">Donnée d'activité saisie :</span>
+                  <span className="text-slate-400">Consommation saisie :</span>
                   <div className="font-bold text-slate-900">{selectedTrace.inputQuantity} {selectedTrace.inputUnit}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Unité normalisée SI :</span>
+                  <span className="text-slate-400">Quantité standard :</span>
                   <div className="font-bold text-slate-900">{selectedTrace.convertedQuantity} {selectedTrace.standardUnit}</div>
                 </div>
               </div>
 
               <div className="border-t border-slate-200 pt-2 space-y-1">
-                <span className="text-slate-400">Référentiel & Facteur certifié appliqué :</span>
+                <span className="text-slate-400">Activité & Référentiel officiel appliqué :</span>
                 <div className="font-bold text-slate-900">{selectedTrace.factorName}</div>
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center space-x-1">
@@ -540,23 +540,23 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                     <span>Facteur Souverain Protégé & Certifié</span>
                   </span>
                   <span className="text-slate-500 text-[11px]">
-                    Code : <strong>[{selectedTrace.factorId}]</strong> • Unité attendue : {selectedTrace.factorUnit} • Périmètre : {selectedTrace.factorPerimeter}
+                    Unité attendue : {selectedTrace.factorUnit} • Périmètre : {selectedTrace.factorPerimeter}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 italic">
-                  Gouvernance et confidentialité : Les coefficients et pondérations internes du catalogue officiel sont sanctuarisés côté serveur conformément à la norme ISO 14064.
+                  Confidentialité et conformité : Les coefficients du barème officiel sont sanctuarisés sur le serveur pour garantir des calculs conformes sans risque d'altération.
                 </p>
               </div>
 
               {selectedTrace.gwpApplied !== null && (
                 <div className="border-t border-slate-200 pt-2">
-                  <span className="text-slate-400">Potentiel de Réchauffement Global (PRG GIEC AR6) :</span>
+                  <span className="text-slate-400">Impact climatique officiel du gaz :</span>
                   <div className="font-bold text-slate-900">Multiplicateur × {selectedTrace.gwpApplied}</div>
                 </div>
               )}
 
               <div className="border-t border-slate-200 pt-2">
-                <span className="text-slate-400">Formule arithmétique déterministe :</span>
+                <span className="text-slate-400">Formule de calcul certifiée :</span>
                 <div className="font-mono font-bold text-slate-900 bg-white p-2 rounded border border-slate-200 mt-1">
                   {selectedTrace.formula}
                 </div>
@@ -564,18 +564,18 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
               <div className="border-t border-slate-200 pt-2 grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-slate-400">Résultat exact brut :</span>
-                  <div className="text-sm font-bold text-brand-900">{selectedTrace.resultKgCO2e.toFixed(4)} kgCO2e</div>
+                  <span className="text-slate-400">Émissions calculées :</span>
+                  <div className="text-sm font-bold text-brand-900">{selectedTrace.resultKgCO2e.toFixed(2)} kgCO2e</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Résultat en tonnes (÷ 1000) :</span>
-                  <div className="text-sm font-bold text-brand-900">{selectedTrace.resultTCO2e.toFixed(6)} tCO2e</div>
+                  <span className="text-slate-400">Émissions en tonnes :</span>
+                  <div className="text-sm font-bold text-brand-900">{selectedTrace.resultTCO2e.toFixed(3)} tCO2e</div>
                 </div>
               </div>
 
               <div className="border-t border-slate-200 pt-2 flex justify-between text-slate-500">
-                <span>Incertitude relative combinée : <strong>±{selectedTrace.uncertaintyRelativePct.toFixed(1)}%</strong></span>
-                <span>Calculé à : {new Date(selectedTrace.calculatedAtUtc).toLocaleString('fr-FR')}</span>
+                <span>Précision garantie : <strong>±{selectedTrace.uncertaintyRelativePct.toFixed(1)}%</strong></span>
+                <span>Calculé le : {new Date(selectedTrace.calculatedAtUtc).toLocaleDateString('fr-FR')}</span>
               </div>
             </div>
 
@@ -820,7 +820,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Activité type / Facteur officiel associé *</label>
+                <label className="block font-bold text-slate-700 mb-1">Activité correspondante / Barème officiel *</label>
                 <select
                   value={formFactorId}
                   onChange={e => {
@@ -832,12 +832,12 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 >
                   {availableFactors.slice(0, 100).map(f => (
                     <option key={f.id} value={f.id}>
-                      [{f.id}] {f.label || f.name} (Scope {f.scope} • {f.expected_unit || f.denominator_unit})
+                      {f.label || f.name} (en {f.expected_unit || f.denominator_unit})
                     </option>
                   ))}
                 </select>
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Sélection certifiée conforme au classeur Bilan Carbone Maroc.
+                  🔒 Barème officiel Bilan Carbone Maroc calculé en toute sécurité sur le serveur.
                 </span>
               </div>
 
@@ -1031,10 +1031,10 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                           • Formule : <strong>{amt.toLocaleString('fr-FR')} MAD ÷ {price} MAD/{preset?.physicalUnit} = {qty.toFixed(2)} {preset?.physicalUnit}</strong>
                         </div>
                         <div>
-                          • Référentiel homologué : <strong>[{preset?.factorId}] {preset?.name}</strong> (Calcul certifié serveur Bilan Carbone® Maroc)
+                          • Barème officiel : <strong>{preset?.name}</strong> (🔒 Calcul officiel sécurisé sur le serveur)
                         </div>
                         <div className="text-slate-500 italic">
-                          • Note d'audit : incertitude relative combinée de ±25% (traçabilité ISO 14064 garantie).
+                          • Précision garantie conforme aux exigences des rapports d'audit.
                         </div>
                       </div>
 

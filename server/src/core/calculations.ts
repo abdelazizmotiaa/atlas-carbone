@@ -64,7 +64,7 @@ export interface CalculationAuditTrace {
   isMonetaryEstimate?: boolean;
   factorId: string;
   factorName: string;
-  factorValue: number;
+  factorValue?: number;
   factorUnit: string;
   factorPerimeter: string;
   gwpApplied: number | null;
@@ -167,7 +167,7 @@ export function calculateEmission(input: ActivityCalculationInput): CalculationR
     isMonetaryEstimate: conversion.isMonetaryEstimate,
     factorId: input.factor.id,
     factorName: input.factor.name,
-    factorValue: input.factor.value,
+    // factorValue sanctuarisé côté serveur (non exposé au client)
     factorUnit: `${input.factor.numeratorUnit}/${input.factor.denominatorUnit}`,
     factorPerimeter: input.factor.perimeter,
     gwpApplied: gwpFactor,

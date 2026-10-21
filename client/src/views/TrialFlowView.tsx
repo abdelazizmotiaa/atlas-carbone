@@ -490,7 +490,7 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Facteur d’émission officiel appliqué
+                        Activité correspondante / Barème officiel appliqué
                       </label>
                       <select
                         value={selectedFactorId}
@@ -499,12 +499,12 @@ export const TrialFlowView: React.FC<TrialFlowViewProps> = ({ lang, onClaimSucce
                       >
                         {catalogOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
-                            [Scope {opt.scope}] {opt.label} ({opt.expected_unit})
+                            {opt.label} (en {opt.expected_unit})
                           </option>
                         ))}
                       </select>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Issu du classeur officiel de référence Bilan Carbone Maroc.
+                        🔒 Calcul certifié sur le serveur selon le barème officiel Bilan Carbone Maroc.
                       </p>
                     </div>
 

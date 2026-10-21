@@ -86,10 +86,10 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-amber-100',
     badgeText: 'text-amber-900 border-amber-300',
     icon: Factory,
-    summaryFr: 'Calcul des émissions directes de fusion électrique/arc, de l’électricité ONEE et traçabilité des précurseurs (ferrailles locales, ferro-alliages) avec dossier auditable importateur UE.',
-    summaryEn: 'Calculation of electric arc furnace direct emissions, ONEE electricity, and precursor traceability (local scrap, ferroalloys) with EU importer audit dossier.',
-    dossierTypeFr: 'Fiche Technique Spécifique MACF — Déclaration Émissions Intrinsèques',
-    dossierTypeEn: 'Specific CBAM Technical Sheet — Embedded Emissions Declaration'
+    summaryFr: 'Calcul simple des consommations des fours électriques, de l’électricité ONEE et traçabilité des matières premières (ferrailles locales) avec dossier officiel prêt pour vos clients en Europe.',
+    summaryEn: 'Simple calculation of electric furnace consumption, ONEE electricity, and local raw materials (recycled scrap) with ready-to-share EU compliance dossiers.',
+    dossierTypeFr: 'Fiche Technique MACF — Déclaration Officielle Export',
+    dossierTypeEn: 'Official CBAM Technical Export Dossier'
   },
   {
     id: 'ciment',
@@ -109,10 +109,10 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-slate-200',
     badgeText: 'text-slate-900 border-slate-300',
     icon: Building2,
-    summaryFr: 'Distinction stricte de la décarbonatation du calcaire (Scope 1 procédé), des combustibles de substitution (RDF / biomasse) et de l’intensité indirecte électrique certifiable.',
-    summaryEn: 'Strict separation of limestone calcination (Scope 1 process), alternative fuels (RDF / biomass), and certified indirect electricity intensity.',
-    dossierTypeFr: 'Rapport Déclaratif Carbone Procédé Cimentier — Conforme UE ETS / MACF',
-    dossierTypeEn: 'Cementitious Process Carbon Declarative Report — EU ETS / CBAM Compliant'
+    summaryFr: 'Mesure directe des émissions de vos fours à ciment, des combustibles et de l’électricité des broyeurs, conforme aux exigences de conformité européenne.',
+    summaryEn: 'Direct measurement of cement kiln emissions, alternative fuels, and mill electricity, compliant with European export standards.',
+    dossierTypeFr: 'Rapport Carbone Procédé Cimentier — Conforme Export UE',
+    dossierTypeEn: 'Cement Process Carbon Report — EU Export Compliant'
   },
   {
     id: 'engrais',
@@ -132,10 +132,10 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-emerald-100',
     badgeText: 'text-emerald-900 border-emerald-300',
     icon: Layers,
-    summaryFr: 'Mesure des flux d’acide sulfurique, phosphorique et ammoniac. Valorisation de la récupération d’énergie thermique (HRS) et traçabilité vers les marchés d’exportation.',
-    summaryEn: 'Measurement of sulfuric, phosphoric acid and ammonia flows. Valuation of heat recovery systems (HRS) and compliance reporting for international export.',
-    dossierTypeFr: 'Certificat d’Empreinte Carbone Produit Chimique & Fertilisant',
-    dossierTypeEn: 'Product Carbon Footprint Certificate — Chemical & Fertilizer'
+    summaryFr: 'Mesure de l’empreinte carbone par tonne d’engrais : valorisation de l’énergie de vos ateliers et attestation officielle pour vos clients internationaux.',
+    summaryEn: 'Carbon footprint calculation per tonne of fertilizer produced: heat recovery valuation and official compliance certificate for global buyers.',
+    dossierTypeFr: 'Certificat d’Empreinte Carbone Fertilisants & Phosphates',
+    dossierTypeEn: 'Fertilizer & Phosphate Product Carbon Footprint Certificate'
   },
   {
     id: 'agriculture',
@@ -155,8 +155,8 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-rose-100',
     badgeText: 'text-rose-900 border-rose-300',
     icon: Wheat,
-    summaryFr: 'Comptabilisation du pompage solaire agricole vs ONEE, fertilisation azotée (émissions de N2O au sol), emballages carton et chaîne logistique sous température dirigée.',
-    summaryEn: 'Accounting of solar vs ONEE irrigation pumping, nitrogen fertilization (soil N2O), packaging cartons, and controlled-temperature European freight.',
+    summaryFr: 'Calcul par kilo de fruits récoltés : pompage d’eau (solaire ou ONEE), fertilisation, emballages carton et transport frigorifique vers l’Europe. Répondez aux exigences des supermarchés européens.',
+    summaryEn: 'Calculation per kg of harvested fruit: water pumping (solar or ONEE), fertilization, carton packaging, and refrigerated European freight for supermarket audits.',
     dossierTypeFr: 'Attestation Empreinte Carbone Récolte & Fret Exportateur',
     dossierTypeEn: 'Harvest Carbon Footprint & Export Logistics Certificate'
   },
@@ -178,8 +178,8 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-blue-100',
     badgeText: 'text-blue-900 border-blue-300',
     icon: Fish,
-    summaryFr: 'Prise en compte du carburant marin chalutiers/senneurs, de la vapeur autoclave en usine, de l’huile végétale d’assaisonnement et de l’acier fer blanc des boîtes.',
-    summaryEn: 'Integration of fishing vessel marine fuel, processing steam autoclaves, seasoning vegetable oil, and tinplate can metal footprint.',
+    summaryFr: 'Calcul par boîte de conserve : carburant des bateaux de pêche, cuisson vapeur en usine, huile végétale et boîtes métalliques. Valorisez la qualité de la conserve marocaine.',
+    summaryEn: 'Calculation per canned unit: fishing vessel fuel, cannery steam, vegetable oil, and tinplate cans to demonstrate Moroccan fishery sustainability.',
     dossierTypeFr: 'Dossier Filière Bleue — Bilan GES Produit Conserverie',
     dossierTypeEn: 'Blue Fishery Dossier — Canned Seafood Product GHG Audit'
   },
@@ -201,8 +201,8 @@ const MOROCCAN_PRODUCTS: MoroccanProductProfile[] = [
     badgeBg: 'bg-indigo-100',
     badgeText: 'text-indigo-900 border-indigo-300',
     icon: Car,
-    summaryFr: 'Gestion de l’électricité verte ONEE avec garanties d’origine, consommation des machines d’extrusion/sertissage et logistique de fret express maritime vers l’Europe.',
-    summaryEn: 'Management of ONEE green power with origin guarantees, extrusion/crimping power consumption, and express maritime logistics to Europe.',
+    summaryFr: 'Calcul des consommations électriques de vos lignes d’assemblage, de vos machines et des expéditions maritimes vers l’Europe. Conforme aux demandes des constructeurs.',
+    summaryEn: 'Measurement of assembly line electricity, machinery power, and express shipping to Europe. Fully aligned with OEM automaker requirements.',
     dossierTypeFr: 'Fiche Conformité Fournisseur Automobile & Aéronautique',
     dossierTypeEn: 'Automotive & Aerospace Supplier Carbon Compliance Sheet'
   }
@@ -423,7 +423,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed">
-                Calculez vos émissions Scopes 1, 2 et 3 à partir de vos factures réelles (ONEE, carburant, fret) avec le catalogue national officiel. Éditez vos dossiers conformes pour vos clients européens et les auditeurs accrédités.
+                Mesurez l'empreinte carbone de votre entreprise simplement à partir de vos factures habituelles (ONEE, carburant, gaz). Obtenez instantanément vos bilans certifiés, vos graphiques et vos attestations officielles prêtes pour vos clients à l'export, vos banques et les douanes européennes (MACF).
               </p>
 
               <div className="pt-3 flex flex-wrap gap-4">
@@ -478,31 +478,31 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
-                    <span className="text-[11px] text-slate-400 font-medium block">Inventaire Total Brut</span>
+                    <span className="text-[11px] text-slate-400 font-medium block">Inventaire Total Réel</span>
                     <div className="text-2xl font-black text-white mt-1">
                       1 245,80 <span className="text-xs font-normal text-slate-400">tCO2e</span>
                     </div>
-                    <span className="text-[10px] text-emerald-400 font-bold mt-1 block">Incertitude combinée ±6.8%</span>
+                    <span className="text-[10px] text-emerald-400 font-bold mt-1 block">Précision garantie & certifiable</span>
                   </div>
                   <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
-                    <span className="text-[11px] text-slate-400 font-medium block">Intensité Spécifique</span>
+                    <span className="text-[11px] text-slate-400 font-medium block">Intensité par Unité</span>
                     <div className="text-2xl font-black text-white mt-1">
                       0,42 <span className="text-xs font-normal text-slate-400">tCO2e / t</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">Rapport Vérifié Casablanca</span>
+                    <span className="text-[10px] text-slate-400 mt-1 block">Rapport officiel vérifié</span>
                   </div>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between items-center text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
-                    <span>Répartition Déterministe</span>
-                    <span>100% Quantifié (Aucun zéro factice)</span>
+                    <span>Répartition par catégorie</span>
+                    <span>Calcul complet et certifié</span>
                   </div>
 
                   <div className="space-y-2.5">
                     <div>
                       <div className="flex justify-between text-slate-300 mb-1 font-medium">
-                        <span>Scope 1 (Directs : chaudières, combustion)</span>
+                        <span>Énergies directes (Carburant camions, gaz atelier, chaudières)</span>
                         <span className="font-mono font-bold text-amber-400">23% • 285,4 t</span>
                       </div>
                       <div className="w-full bg-slate-800 rounded-full h-1.5">
@@ -512,7 +512,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                     <div>
                       <div className="flex justify-between text-slate-300 mb-1 font-medium">
-                        <span>Scope 2 (Électricité réseau ONEE)</span>
+                        <span>Électricité réseau ONEE (Usines, ateliers, bureaux)</span>
                         <span className="font-mono font-bold text-emerald-400">36% • 449,8 t</span>
                       </div>
                       <div className="w-full bg-slate-800 rounded-full h-1.5">
@@ -522,7 +522,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                     <div>
                       <div className="flex justify-between text-slate-300 mb-1 font-medium">
-                        <span>Scope 3 (Achats de matières & fret TIR)</span>
+                        <span>Transport & Achats (Livraisons, camions, matières premières)</span>
                         <span className="font-mono font-bold text-teal-300">41% • 510,6 t</span>
                       </div>
                       <div className="w-full bg-slate-800 rounded-full h-1.5">
@@ -534,9 +534,72 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                 <div className="p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl flex items-center space-x-2.5 text-xs text-emerald-200">
                   <BadgeCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Catalogue souverain protégé : calculs exécutés côté serveur sans divulgation de formules confidentielles.</span>
+                  <span>🔒 Facteurs certifiés & protégés : vos calculs sont exécutés en toute sécurité sur nos serveurs pour garantir votre conformité permanente.</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION COMMENT ÇA MARCHE : SIMPLE, RAPIDE, SANS JARGON */}
+      <section className="py-16 bg-slate-950 border-b border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="text-center max-w-3xl mx-auto space-y-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+              {lang === 'en' ? 'Simple 3-Step Process' : 'Simple, Accessible & Sans Jargon'}
+            </span>
+            <h2 className="text-3xl font-extrabold text-white">
+              {lang === 'en' ? 'How Atlas Carbone Works for Your Company' : 'Comment ça marche pour votre entreprise ?'}
+            </h2>
+            <p className="text-sm text-slate-400">
+              {lang === 'en'
+                ? 'No climate science degree needed. Use your day-to-day utility bills and let our certified engine do the heavy lifting.'
+                : 'Aucune expertise climatique requise. Utilisez vos factures du quotidien et laissez notre moteur certifié calculer vos résultats.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 relative hover:border-emerald-500/50 transition group space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+                1
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? '1. Enter Your Routine Bills' : '1. Saisissez vos factures habituelles'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Input electricity in kWh or Dirhams (ONEE bills), fleet diesel in liters or receipts, gas bottles, or freight weight. Enter values directly without manual conversions.'
+                  : 'Renseignez vos consommations en unités physiques ou directement en Dirhams (factures ONEE, reçus de gasoil camions, bonbonnes de gaz, fret). Notre assistant calcule automatiquement les équivalents.'}
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 relative hover:border-emerald-500/50 transition group space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+                2
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? '2. Automatic Certified Calculation' : '2. Calcul automatique certifié'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Atlas Carbone securely applies official Moroccan emission factors on our servers. You get precision calculations without worrying about formulas or coefficients.'
+                  : 'Atlas Carbone applique le barème officiel marocain en toute sécurité sur nos serveurs. Vos données d’émissions sont calculées avec précision, sans formules compliquées.'}
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 relative hover:border-emerald-500/50 transition group space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-black text-lg group-hover:scale-105 transition">
+                3
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {lang === 'en' ? '3. Official Ready-to-Send Reports' : '3. Rapports officiels prêts à l’emploi'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {lang === 'en'
+                  ? 'Download bilingual PDF audit dossiers ready for European clients, customs (CBAM), and Moroccan banks. Return anytime to update with new monthly invoices.'
+                  : 'Téléchargez vos attestations officielles et vos bilans bilingues (FR/EN) prêts pour vos clients européens (MACF), vos banques et vos auditeurs. Revenez à chaque nouvelle facture !'}
+              </p>
             </div>
           </div>
         </div>
@@ -678,16 +741,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
                       <span className="text-slate-200">UE 2023/956 & ISO 14064</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
-                      <span>Incertitude déclarée :</span>
-                      <span className="text-emerald-400">±5,4% (95% CI)</span>
+                      <span>Précision garantie :</span>
+                      <span className="text-emerald-400">Conforme aux audits</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
                       <span>Périmètre géographique :</span>
                       <span className="text-slate-200">Maroc (MA)</span>
                     </div>
                     <div className="flex justify-between text-slate-400">
-                      <span>Protection catalogue :</span>
-                      <span className="text-emerald-400">Pondérations sanctuarisées</span>
+                      <span>Sécurité des données :</span>
+                      <span className="text-emerald-400">Facteurs certifiés & protégés</span>
                     </div>
                   </div>
 
@@ -811,10 +874,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
       <section id="simulateur" className="py-20 bg-slate-900 border-b border-slate-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Moteur Déterministe Souverain</span>
-            <h2 className="text-3xl font-extrabold text-white">Simulation Rapide d'une Source d'Émission</h2>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Simulateur Express Sans Engagement</span>
+            <h2 className="text-3xl font-extrabold text-white">Estimez une Facture ou Consommation en 1 Clic</h2>
             <p className="text-sm text-slate-400">
-              Calculez instantanément l'empreinte carbone selon le référentiel officiel national sans exposition des données sensibles.
+              Sélectionnez votre type de dépense courante et entrez votre volume. Atlas Carbone applique le barème officiel marocain certifié en toute sécurité.
             </p>
           </div>
 
@@ -822,9 +885,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { id: 'elec', label: 'Électricité ONEE', icon: Zap },
-                { id: 'diesel', label: 'Diesel / Pompe', icon: Factory },
-                { id: 'gaz', label: 'Gaz naturel', icon: TrendingDown },
-                { id: 'fret', label: 'Fret routier (t.km)', icon: Globe2 }
+                { id: 'diesel', label: 'Gasoil / Flotte', icon: Factory },
+                { id: 'gaz', label: 'Gaz / Chaudière', icon: TrendingDown },
+                { id: 'fret', label: 'Fret Routier Camions', icon: Globe2 }
               ].map(item => {
                 const Icon = item.icon;
                 const isSelected = simType === item.id;
@@ -848,9 +911,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1">
-                  {simType === 'elec' && 'Consommation annuelle (kWh)'}
-                  {simType === 'diesel' && 'Carburant consommé (litres)'}
-                  {simType === 'gaz' && 'Énergie chaudière (kWh PCI)'}
+                  {simType === 'elec' && 'Consommation d’électricité (kWh)'}
+                  {simType === 'diesel' && 'Volume de carburant (litres de gasoil)'}
+                  {simType === 'gaz' && 'Énergie consommée (kWh)'}
                   {simType === 'fret' && 'Masse transportée (tonnes)'}
                 </label>
                 <input
@@ -875,37 +938,44 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
               ) : (
                 <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-xs space-y-1">
-                  <div className="text-slate-400 font-medium">Référentiel certifié appliqué :</div>
+                  <div className="text-slate-400 font-medium">Barème officiel appliqué :</div>
                   <div className="font-bold text-white flex items-center space-x-1.5">
                     <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span>
-                      {simType === 'elec' && 'Mix Électrique Réseau National ONEE (Homologué Bilan Carbone®)'}
-                      {simType === 'diesel' && 'Combustion Carburant Diesel Flotte (Base Carbone Maroc)'}
-                      {simType === 'gaz' && 'Combustion Gaz Naturel Vapeur (PCI Vérifié)'}
+                      {simType === 'elec' && 'Mix Électrique Réseau National ONEE (Bilan Carbone®)'}
+                      {simType === 'diesel' && 'Carburant Flotte Routière (Base Carbone Maroc)'}
+                      {simType === 'gaz' && 'Gaz Naturel Vapeur & Industrie (Certifié)'}
                     </span>
                   </div>
-                  <div className="text-emerald-400 text-[11px]">Calcul certifié serveur — Confidentialité garantie</div>
+                  <div className="text-emerald-400 text-[11px]">🔒 Calcul officiel sur le serveur — Formules protégées</div>
                 </div>
               )}
             </div>
 
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
               <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Résultat Certifié Estimé</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Empreinte Carbone Calculée</span>
                 <div className="text-3xl font-black text-white mt-1">
                   {calculateQuickSim().toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
                   <span className="text-lg font-normal text-slate-400">tCO2e</span>
                 </div>
                 <span className="text-xs text-emerald-400 mt-1 block">
-                  Équivalent à {(calculateQuickSim() * 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kgCO2e
+                  Soit {(calculateQuickSim() * 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kgCO2e
                 </span>
               </div>
               <a
                 href="#demo-accounts"
                 className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition"
               >
-                Intégrer dans un Bilan Complet
+                Créer mon Bilan Complet Gratuit
               </a>
+            </div>
+
+            <div className="text-[11px] text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                Atlas Carbone conserve la confidentialité des facteurs pour vous garantir des calculs conformes aux audits : revenez à chaque facture pour enrichir votre inventaire d'entreprise.
+              </span>
             </div>
           </div>
         </div>
