@@ -29,9 +29,11 @@ import { trialRouter } from './modules/trial.js';
 import { contentRouter } from './modules/content.js';
 import { assistantRouter } from './modules/assistant.js';
 import { pricingRouter } from './modules/pricing.js';
+import { integrationsRouter } from './modules/integrations.js';
 import { SECTOR_PROFILES } from './modules/sectors.js';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import multer from 'multer';
 
 const app = express();
@@ -135,6 +137,7 @@ declare global {
       user?: AuthUser;
       organizationId?: string;
       userRole?: string;
+      apiKey?: any;
     }
   }
 }
@@ -144,14 +147,43 @@ declare global {
 // -------------------------------------------------------------
 
 function authenticateToken(req: Request, res: Response, next: NextFunction) {
+  // 1. Authentification Machine-to-Machine par clé d'API ERP (X-Atlas-API-Key ou Bearer ak_live_...)
+  const apiKeyHeader = req.headers['x-atlas-api-key'] as string;
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.split(' ')[1];
   if (!token && typeof req.query?.token === 'string') {
     token = req.query.token;
   }
 
+  const rawApiKey = apiKeyHeader || (token && token.startsWith('ak_live_') ? token : null);
+
+  if (rawApiKey) {
+    const keyHash = crypto.createHash('sha256').update(rawApiKey.trim()).digest('hex');
+    const keyRow: any = db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1').get(keyHash);
+
+    if (!keyRow) {
+      return res.status(401).json({ error: "Clé d'API ERP invalide, expirée ou révoquée." });
+    }
+
+    try {
+      db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(new Date().toISOString(), keyRow.id);
+    } catch (_) {}
+
+    req.apiKey = keyRow;
+    req.organizationId = keyRow.organization_id;
+    req.userRole = keyRow.permissions === 'full' ? 'admin' : (keyRow.permissions === 'read_only' ? 'auditor' : 'carbon_manager');
+    req.user = {
+      id: keyRow.created_by || 'system-erp-api',
+      email: `api-client@${keyRow.organization_id}`,
+      full_name: keyRow.name,
+      is_superadmin: 0
+    };
+    return next();
+  }
+
+  // 2. Authentification par JWT standard
   if (!token) {
-    return res.status(401).json({ error: "Authentification requise. Jeton d'accès manquant." });
+    return res.status(401).json({ error: "Authentification requise. Jeton d'accès manquant ou clé d'API absente." });
   }
 
   try {
@@ -164,10 +196,21 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
 }
 
 function requireTenant(req: Request, res: Response, next: NextFunction) {
-  const orgId = (req.params.orgId || req.headers['x-organization-id'] || req.query.orgId) as string;
+  const orgId = (req.params.orgId || req.headers['x-organization-id'] || req.query.orgId || req.organizationId) as string;
 
   if (!orgId) {
     return res.status(400).json({ error: "Identifiant d'entreprise requis (orgId manquant)." });
+  }
+
+  // Si authentifié par clé d'API, vérifier que l'org demandée correspond à celle de la clé
+  if (req.apiKey) {
+    if (req.apiKey.organization_id !== orgId) {
+      return res.status(403).json({
+        error: "Accès refusé : la clé d'API utilisée n'est pas autorisée sur cette entreprise (violation d'isolation)."
+      });
+    }
+    req.organizationId = orgId;
+    return next();
   }
 
   // Super admin a accès avec traçabilité
@@ -203,6 +246,11 @@ function requireRole(allowedRoles: string[]) {
     next();
   };
 }
+
+// -------------------------------------------------------------
+// Module d'Intégration ERP & Connecteurs API (Phase 5)
+// -------------------------------------------------------------
+app.use(['/api/organizations/:orgId/integrations', '/api/integrations'], authenticateToken, requireTenant, integrationsRouter);
 
 function logAudit(orgId: string | null, userId: string | null, action: string, entityType: string, entityId: string | null, details: any) {
   try {

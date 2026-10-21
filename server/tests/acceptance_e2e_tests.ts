@@ -94,7 +94,7 @@ function logTest(num: number, name: string, passed: boolean, details: string, er
 
 async function runAcceptanceTests() {
   console.log('\n================================================================');
-  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (28 TESTS)');
+  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (30 TESTS)');
   console.log('================================================================\n');
 
   let guestSessionId = '';
@@ -1263,6 +1263,187 @@ async function runAcceptanceTests() {
     }
   } catch (err: any) {
     logTest(28, 'Passerelle Paiement MAD & Upgrade', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 29: Connecteur API ERP Machine-to-Machine & Ingestion Facture ONEE
+  // ============================================================================
+  let createdApiKey = '';
+  let createdKeyId = '';
+  const runSuffix = Date.now().toString(36);
+  const testRefMt = `ONEE-2026-MT-${runSuffix}`;
+  const testRefBt = `ONEE-2026-BT-${runSuffix}`;
+  const testRefAfq = `AFQ-2026-FL-${runSuffix}`;
+
+  try {
+    // 1. Création d'une clé d'API Machine-to-Machine pour l'organisation
+    const createKeyRes = await request('/api/organizations/org-agro-atlas/integrations/api-keys', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' },
+      body: {
+        name: 'Connecteur SAP S/4HANA Agadir',
+        permissions: 'read_write'
+      }
+    });
+
+    createdApiKey = createKeyRes.data?.key || '';
+    createdKeyId = createKeyRes.data?.id || '';
+    const isKeyCreated = createKeyRes.status === 201 &&
+      createdApiKey.startsWith('ak_live_') &&
+      createKeyRes.data?.key_prefix?.startsWith('ak_live_') &&
+      createKeyRes.data?.permissions === 'read_write';
+
+    // 2. Ingestion directe d'une facture d'électricité ONEE Moyenne Tension via la clé d'API
+    const invoiceRes = await request('/api/organizations/org-agro-atlas/integrations/energy-invoice', {
+      method: 'POST',
+      headers: { 'X-Atlas-API-Key': createdApiKey },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        invoice_ref: testRefMt,
+        supplier_name: 'ONEE - Branche Électricité',
+        invoice_type: 'electricity_onee_mt',
+        bill_amount_mad: 50000,
+        unit_price_mad: 1.15,
+        invoice_date: '2026-03-31'
+      }
+    });
+
+    const isInvoiceIngested = invoiceRes.status === 201 &&
+      invoiceRes.data?.success === true &&
+      invoiceRes.data?.invoice_ref === testRefMt &&
+      Math.abs(invoiceRes.data?.quantity - (50000 / 1.15)) < 0.1 &&
+      invoiceRes.data?.scope === 2 &&
+      invoiceRes.data?.category === 'electricite_reseau' &&
+      Math.abs(invoiceRes.data?.emission_t_co2e - 27.939) < 0.1;
+
+    // 3. Vérification du rejet anti-doublon (Tentative de ré-ingérer la même facture)
+    const duplicateRes = await request('/api/organizations/org-agro-atlas/integrations/energy-invoice', {
+      method: 'POST',
+      headers: { 'X-Atlas-API-Key': createdApiKey },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        invoice_ref: testRefMt,
+        invoice_type: 'electricity_onee_mt',
+        bill_amount_mad: 50000
+      }
+    });
+
+    const isDuplicateRejected = duplicateRes.status === 409 &&
+      String(duplicateRes.data?.error).includes('DOUBLON DÉTECTÉ');
+
+    if (isKeyCreated && isInvoiceIngested && isDuplicateRejected) {
+      logTest(29, 'Connecteur API ERP Machine-to-Machine & Ingestion Facture ONEE avec Anti-Doublon', true,
+        `Clé d'API ${createKeyRes.data.key_prefix}... générée. Facture ONEE 50 000 MAD convertie déterministement en ${invoiceRes.data.quantity.toFixed(1)} kWh -> ${invoiceRes.data.emission_t_co2e} tCO₂e Scope 2. Rejet anti-doublon (HTTP 409) validé.`);
+    } else {
+      logTest(29, 'Connecteur API ERP & Ingestion ONEE', false,
+        `keyCreated=${isKeyCreated}, invoiceIngested=${isInvoiceIngested}, duplicateRejected=${isDuplicateRejected} (status=${duplicateRes.status})`);
+    }
+  } catch (err: any) {
+    logTest(29, 'Connecteur API ERP & Ingestion ONEE', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 30: Importation Massive (Bulk Ingestion), Dry-Run & Logs d'Audit ERP
+  // ============================================================================
+  try {
+    // 1. Simulation Dry-Run (sans insertion en base) avec détection d'un doublon
+    const dryRunRes = await request('/api/organizations/org-agro-atlas/integrations/bulk-import', {
+      method: 'POST',
+      headers: { 'X-Atlas-API-Key': createdApiKey },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        dryRun: true,
+        items: [
+          {
+            invoice_ref: testRefBt,
+            invoice_type: 'electricity_onee_bt',
+            bill_amount_mad: 15000,
+            supplier_name: 'ONEE Basse Tension'
+          },
+          {
+            invoice_ref: testRefAfq,
+            invoice_type: 'diesel_fleet',
+            bill_amount_mad: 25000,
+            supplier_name: 'Afriquia SMDC'
+          },
+          {
+            invoice_ref: testRefMt, // Déjà existante en base
+            invoice_type: 'electricity_onee_mt',
+            bill_amount_mad: 50000
+          }
+        ]
+      }
+    });
+
+    const isDryRunValid = dryRunRes.status === 200 &&
+      dryRunRes.data?.dryRun === true &&
+      dryRunRes.data?.valid_count === 2 &&
+      dryRunRes.data?.duplicate_count === 1 &&
+      dryRunRes.data?.duplicates[0]?.invoice_ref === testRefMt;
+
+    // 2. Importation définitive non-simulée (dryRun = false)
+    const bulkImportRes = await request('/api/organizations/org-agro-atlas/integrations/bulk-import', {
+      method: 'POST',
+      headers: { 'X-Atlas-API-Key': createdApiKey },
+      body: {
+        reporting_period_id: 'per-agro-2026',
+        dryRun: false,
+        items: [
+          {
+            invoice_ref: testRefBt,
+            invoice_type: 'electricity_onee_bt',
+            bill_amount_mad: 15000
+          },
+          {
+            invoice_ref: testRefAfq,
+            invoice_type: 'diesel_fleet',
+            bill_amount_mad: 25000
+          },
+          {
+            invoice_ref: testRefMt, // Rejet doublon
+            invoice_type: 'electricity_onee_mt',
+            bill_amount_mad: 50000
+          }
+        ]
+      }
+    });
+
+    const isBulkImported = bulkImportRes.status === 201 &&
+      bulkImportRes.data?.dryRun === false &&
+      bulkImportRes.data?.imported_count === 2 &&
+      bulkImportRes.data?.duplicate_count === 1 &&
+      bulkImportRes.data?.total_emissions_tco2e > 0;
+
+    // 3. Consultation du journal d'ingestion ERP (erp_sync_logs)
+    const logsRes = await request('/api/organizations/org-agro-atlas/integrations/logs', {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+
+    const isLogsWorking = logsRes.status === 200 &&
+      Array.isArray(logsRes.data?.logs) &&
+      logsRes.data?.logs.length >= 2;
+
+    // 4. Révocation de la clé d'API et vérification du blocage ultérieur (HTTP 401)
+    const revokeRes = await request(`/api/organizations/org-agro-atlas/integrations/api-keys/${createdKeyId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-agro-atlas' }
+    });
+
+    const blockedAfterRevocation = await request('/api/organizations/org-agro-atlas/integrations/logs', {
+      headers: { 'X-Atlas-API-Key': createdApiKey }
+    });
+
+    const isRevocationWorking = revokeRes.status === 200 && blockedAfterRevocation.status === 401;
+
+    if (isDryRunValid && isBulkImported && isLogsWorking && isRevocationWorking) {
+      logTest(30, 'Importation Massive (Bulk Ingestion), Dry-Run, Logs d’Audit et Révocation Clé ERP', true,
+        `Simulation Dry-Run validée (2 valides, 1 doublon détecté). Import définitif réussi (${bulkImportRes.data.total_emissions_tco2e} tCO₂e ajoutées). Journal d'audit (${logsRes.data.logs.length} logs) et blocage immédiat après révocation de clé (HTTP 401) confirmés.`);
+    } else {
+      logTest(30, 'Importation Massive, Logs & Révocation', false,
+        `dryRunValid=${isDryRunValid}, bulkImported=${isBulkImported}, logsWorking=${isLogsWorking}, revocationWorking=${isRevocationWorking} (blockedStatus=${blockedAfterRevocation.status})`);
+    }
+  } catch (err: any) {
+    logTest(30, 'Importation Massive, Logs & Révocation', false, err.message);
   }
 
   // ============================================================================

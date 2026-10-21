@@ -419,5 +419,62 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data)
       })
+  },
+  integrations: {
+    getApiKeys: (orgId: string) =>
+      request<{ keys: any[] }>(`/organizations/${orgId}/integrations/api-keys`),
+    createApiKey: (orgId: string, data: { name: string; permissions?: string }) =>
+      request<any>(`/organizations/${orgId}/integrations/api-keys`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    deleteApiKey: (orgId: string, keyId: string) =>
+      request<any>(`/organizations/${orgId}/integrations/api-keys/${keyId}`, {
+        method: 'DELETE'
+      }),
+    ingestEnergyInvoice: (orgId: string, data: {
+      reporting_period_id: string;
+      site_id?: string;
+      invoice_ref: string;
+      supplier_name?: string;
+      invoice_type?: string;
+      bill_amount_mad?: number;
+      quantity?: number;
+      unit?: string;
+      unit_price_mad?: number;
+      invoice_date?: string;
+      description?: string;
+    }) =>
+      request<any>(`/organizations/${orgId}/integrations/energy-invoice`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    bulkImport: (orgId: string, data: {
+      reporting_period_id: string;
+      site_id?: string;
+      items: any[];
+      dryRun?: boolean;
+    }) =>
+      request<any>(`/organizations/${orgId}/integrations/bulk-import`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getLogs: (orgId: string) =>
+      request<{ logs: any[] }>(`/organizations/${orgId}/integrations/logs`),
+    getWebhooks: (orgId: string) =>
+      request<{ webhooks: any[] }>(`/organizations/${orgId}/integrations/webhooks`),
+    createWebhook: (orgId: string, data: { name: string; url: string; subscribed_events?: string[] }) =>
+      request<any>(`/organizations/${orgId}/integrations/webhooks`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    deleteWebhook: (orgId: string, webhookId: string) =>
+      request<any>(`/organizations/${orgId}/integrations/webhooks/${webhookId}`, {
+        method: 'DELETE'
+      }),
+    testWebhook: (orgId: string, webhookId: string) =>
+      request<any>(`/organizations/${orgId}/integrations/webhooks/${webhookId}/test`, {
+        method: 'POST'
+      })
   }
 };

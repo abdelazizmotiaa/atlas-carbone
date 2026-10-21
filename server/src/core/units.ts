@@ -156,7 +156,7 @@ export const BILL_CONVERSION_PRESETS: Record<string, BillConversionPreset> = {
     priceUnit: "MAD / Litre TTC",
     sourceFr: "Barème moyen du marché marocain des carburants (Casablanca / Régions)",
     sourceEn: "Moroccan Fuel Market Average Pump Price Benchmark",
-    suggestedFactorId: "FE-MA-0001",
+    suggestedFactorId: "FE-MA-0029",
     scope: 1,
     descriptionFr: "Flotte utilitaire, véhicules commerciaux, camions et groupes diesel. 10 000 MAD ≈ 800 Litres.",
     descriptionEn: "Company utility vans, commercial cars, trucks, and diesel gensets. 10,000 MAD ≈ 800 Liters."
@@ -171,7 +171,7 @@ export const BILL_CONVERSION_PRESETS: Record<string, BillConversionPreset> = {
     priceUnit: "MAD / Litre TTC",
     sourceFr: "Barème moyen du marché marocain des carburants",
     sourceEn: "Moroccan Average Gasoline Pump Price",
-    suggestedFactorId: "FE-MA-0002",
+    suggestedFactorId: "FE-MA-0030",
     scope: 1,
     descriptionFr: "Véhicules de fonction et véhicules légers à essence. 5 000 MAD ≈ 352 Litres.",
     descriptionEn: "Gasoline company vehicles and runabouts. 5,000 MAD ≈ 352 Liters."
@@ -186,7 +186,7 @@ export const BILL_CONVERSION_PRESETS: Record<string, BillConversionPreset> = {
     priceUnit: "MAD / Tonne HT",
     sourceFr: "Bons de livraison distributeurs gaz vrac (Afriquia Gaz, Salam Gaz, Total)",
     sourceEn: "Bulk Propane Distributor Invoices",
-    suggestedFactorId: "FE-MA-0010",
+    suggestedFactorId: "FE-MA-0020",
     scope: 1,
     descriptionFr: "Citernes fixes de stockage pour chaudières vapeur, fours ou eau chaude. 55 000 MAD ≈ 5 Tonnes.",
     descriptionEn: "Stationary bulk gas tanks for steam boilers, ovens, or central water heating. 55,000 MAD ≈ 5 Tonnes."

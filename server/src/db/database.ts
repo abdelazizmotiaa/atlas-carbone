@@ -421,6 +421,48 @@ export function initDatabaseSchema() {
       created_at TEXT NOT NULL
     );
 
+    -- 22. Clés d'API ERP & Connecteurs Industriels
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      key_hash TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      permissions TEXT NOT NULL DEFAULT 'read_write',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_used_at TEXT,
+      created_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+
+    -- 23. Journal d'Ingestion & Synchronisation ERP (Audit Trail d'import)
+    CREATE TABLE IF NOT EXISTS erp_sync_logs (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      api_key_id TEXT REFERENCES api_keys(id),
+      source_system TEXT NOT NULL,
+      import_type TEXT NOT NULL,
+      total_records INTEGER NOT NULL,
+      successful_records INTEGER NOT NULL,
+      failed_records INTEGER NOT NULL,
+      total_emissions_tco2e REAL DEFAULT 0,
+      details_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    -- 24. Webhooks Sortants pour ERP & Systèmes Tiers
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      secret_key TEXT NOT NULL,
+      subscribed_events TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_triggered_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
     -- Index d'optimisation
     CREATE INDEX IF NOT EXISTS idx_activity_records_period ON activity_records(reporting_period_id);
     CREATE INDEX IF NOT EXISTS idx_activity_records_org ON activity_records(organization_id);
@@ -434,6 +476,10 @@ export function initDatabaseSchema() {
     CREATE INDEX IF NOT EXISTS idx_news_status ON news_articles(status);
     CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
     CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
+    CREATE INDEX IF NOT EXISTS idx_erp_sync_org ON erp_sync_logs(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_webhooks_org ON webhooks(organization_id);
   `);
 
   // Migrations douces pour bases de données existantes
@@ -455,4 +501,6 @@ export function initDatabaseSchema() {
   safeAddCol('activity_records', 'evidence_file_path TEXT');
   safeAddCol('activity_records', 'evidence_file_size INTEGER');
   safeAddCol('activity_records', 'evidence_uploaded_at TEXT');
+  safeAddCol('activity_records', 'invoice_ref TEXT');
+  safeAddCol('activity_records', 'supplier_name TEXT');
 }

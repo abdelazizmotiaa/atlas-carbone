@@ -34,12 +34,13 @@ import { CbamExportView } from './views/CbamExportView.js';
 import { ReductionPlanView } from './views/ReductionPlanView.js';
 import { CommercialQuotesView } from './views/CommercialQuotesView.js';
 import { ReportView } from './views/ReportView.js';
+import { ErpIntegrationView } from './views/ErpIntegrationView.js';
 import { OnboardingWizardModal } from './views/OnboardingWizardModal.js';
 import { TrialFlowView } from './views/TrialFlowView.js';
 import { AcademyView } from './views/AcademyView.js';
 import { PublicContentView } from './views/PublicContentView.js';
 import { Language, translations } from './i18n.js';
-import { GraduationCap, Newspaper } from 'lucide-react';
+import { GraduationCap, Newspaper, KeyRound } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('fr');
@@ -321,6 +322,7 @@ export const App: React.FC = () => {
               { id: 'factors', label: lang === 'en' ? "Emission Factors" : "Catalogue Facteurs", icon: BookOpen },
               { id: 'reduction', label: lang === 'en' ? "Action Plan" : "Plan de transition", icon: TrendingDown },
               { id: 'cbam', label: lang === 'en' ? "EU Export (CBAM)" : "Export Europe (MACF)", icon: Factory },
+              { id: 'integrations', label: lang === 'en' ? "ERP & API Keys" : "Connecteurs & API ERP", icon: KeyRound },
               { id: 'academy', label: lang === 'en' ? "Carbon Academy" : "Académie Carbone", icon: GraduationCap },
               { id: 'public_content', label: lang === 'en' ? "Guides & News" : "Guides & Veille", icon: Newspaper },
               { id: 'quotes', label: lang === 'en' ? "Subscription & Quote" : "Devis & Abonnement", icon: CreditCard },
@@ -436,6 +438,8 @@ export const App: React.FC = () => {
           {currentView === 'factors' && <FactorsCatalogView />}
 
           {currentView === 'cbam' && <CbamExportView orgId={currentOrgId} />}
+
+          {currentView === 'integrations' && <ErpIntegrationView orgId={currentOrgId} />}
 
           {currentView === 'reduction' && <ReductionPlanView orgId={currentOrgId} />}
 
