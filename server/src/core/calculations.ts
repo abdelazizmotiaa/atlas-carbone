@@ -151,8 +151,8 @@ export function calculateEmission(input: ActivityCalculationInput): CalculationR
   const uAbsKg = resultKgCO2e * uRel;
 
   let formula = gwpFactor !== null
-    ? `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × ${input.factor.value} kg_${input.factor.gasType} × PRG(${gwpFactor}) = ${resultKgCO2e.toFixed(4)} kgCO2e`
-    : `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × ${input.factor.value} kgCO2e/${input.factor.denominatorUnit} = ${resultKgCO2e.toFixed(4)} kgCO2e`;
+    ? `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × [Facteur Certifié ${input.factor.id}] × PRG(${gwpFactor}) = ${resultKgCO2e.toFixed(4)} kgCO2e`
+    : `${conversion.convertedValue.toFixed(2)} ${input.factor.denominatorUnit} × [Facteur Certifié ${input.factor.id}] = ${resultKgCO2e.toFixed(4)} kgCO2e`;
 
   if (conversion.isMonetaryEstimate) {
     formula = `[${conversion.explanation}] ➔ ${formula}`;

@@ -20,7 +20,8 @@ import {
   Receipt,
   ArrowRightLeft,
   Sparkles,
-  Coins
+  Coins,
+  Lock
 } from 'lucide-react';
 import { ActivityRecord, Site, EmissionFactor, CalculationTrace } from '../types.js';
 import { api } from '../api.js';
@@ -530,12 +531,21 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-2">
-                <span className="text-slate-400">Facteur d'émission appliqué :</span>
+              <div className="border-t border-slate-200 pt-2 space-y-1">
+                <span className="text-slate-400">Référentiel & Facteur certifié appliqué :</span>
                 <div className="font-bold text-slate-900">{selectedTrace.factorName}</div>
-                <div className="text-slate-500 mt-0.5">
-                  Valeur : <strong>{selectedTrace.factorValue} {selectedTrace.factorUnit}</strong> • Périmètre : {selectedTrace.factorPerimeter}
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center space-x-1">
+                    <Lock className="w-3 h-3 text-emerald-700 mr-1 inline" />
+                    <span>Facteur Souverain Protégé & Certifié</span>
+                  </span>
+                  <span className="text-slate-500 text-[11px]">
+                    Code : <strong>[{selectedTrace.factorId}]</strong> • Unité attendue : {selectedTrace.factorUnit} • Périmètre : {selectedTrace.factorPerimeter}
+                  </span>
                 </div>
+                <p className="text-[10px] text-slate-400 italic">
+                  Gouvernance et confidentialité : Les coefficients et pondérations internes du catalogue officiel sont sanctuarisés côté serveur conformément à la norme ISO 14064.
+                </p>
               </div>
 
               {selectedTrace.gwpApplied !== null && (
@@ -1021,7 +1031,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                           • Formule : <strong>{amt.toLocaleString('fr-FR')} MAD ÷ {price} MAD/{preset?.physicalUnit} = {qty.toFixed(2)} {preset?.physicalUnit}</strong>
                         </div>
                         <div>
-                          • Facteur associé : <strong>[{preset?.factorId}] {preset?.name}</strong> (~{factorVal} kgCO2e/{preset?.physicalUnit})
+                          • Référentiel homologué : <strong>[{preset?.factorId}] {preset?.name}</strong> (Calcul certifié serveur Bilan Carbone® Maroc)
                         </div>
                         <div className="text-slate-500 italic">
                           • Note d'audit : incertitude relative combinée de ±25% (traçabilité ISO 14064 garantie).

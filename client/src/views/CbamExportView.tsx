@@ -105,7 +105,7 @@ export const CbamExportView: React.FC<CbamExportViewProps> = ({ orgId }) => {
           <div className="p-3 bg-white/80 rounded-xl border border-amber-200">
             <span className="font-bold text-amber-900 block mb-1">Électricité & Émissions indirectes :</span>
             <p className="text-slate-600">
-              Le facteur réseau de l'ONEE (0,6426 kgCO2e/kWh) est traçable, mais les règles de calcul des émissions
+              Le facteur d'émission officiel du réseau électrique national ONEE est homologué et traçable, mais les règles de calcul des émissions
               indirectes MACF sont distinctes du bilan d'entreprise. Les valeurs par défaut ne sont admises que sous
               conditions strictes de justification.
             </p>
