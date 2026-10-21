@@ -1,0 +1,22 @@
+name: 24/7 Uptime & Keepalive Monitor
+
+on:
+  schedule:
+    # Ping toutes les 15 minutes pour garder Render actif et vérifier la disponibilité
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Atlas Carbone Production Healthcheck
+        run: |
+          echo "Pinging https://mesure-emissions.com/health ..."
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://mesure-emissions.com/health)
+          echo "HTTP Status Code: $STATUS_CODE"
+          if [ "$STATUS_CODE" -ne 200 ]; then
+            echo "::error::Atlas Carbone est inaccessible ou renvoie un code d'erreur: $STATUS_CODE"
+            exit 1
+          fi
+          echo "Atlas Carbone est actif, rapide et en ligne (HTTP 200 OK) !"
