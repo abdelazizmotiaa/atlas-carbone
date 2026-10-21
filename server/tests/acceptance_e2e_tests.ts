@@ -94,7 +94,7 @@ function logTest(num: number, name: string, passed: boolean, details: string, er
 
 async function runAcceptanceTests() {
   console.log('\n================================================================');
-  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (24 TESTS)');
+  console.log('🚀 ATLAS CARBONE - SUITE DE VALIDATION D’ACCEPTATION (26 TESTS)');
   console.log('================================================================\n');
 
   let guestSessionId = '';
@@ -989,6 +989,141 @@ async function runAcceptanceTests() {
     }
   } catch (err: any) {
     logTest(24, 'Trajectoire Pluriannuelle', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 25: Calculateur MACF / CBAM Déterministe pour Marchandises Complexes (Annexe IV Règlement UE 2023/956)
+  // ============================================================================
+  try {
+    // 1. Calcul pour barres en acier (CN 7214 20 00)
+    const calcRes = await request('/api/organizations/org-metal-oriental/cbam/calculate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' },
+      body: {
+        processEmissionsDirectTCO2e: 1200,
+        electricityIndirectTCO2e: 480,
+        precursorEmissionsTCO2e: 300,
+        productionTonnage: 2000,
+        exportTonnageEU: 1500,
+        cnCode: '7214 20 00',
+        carbonPricePaidLocalPerTonneMAD: 0,
+        etsBenchmarkPriceEURPerTCO2e: 65
+      }
+    });
+
+    const calcData = calcRes.data;
+    const isCalcSuccess = calcRes.status === 200 &&
+      calcData.isEligibleSector === true &&
+      calcData.sectorName === 'Fer et Acier (Iron & Steel)' &&
+      calcData.specificDirectEmissionsTCO2ePerTonne === 0.6 &&
+      calcData.specificIndirectEmissionsTCO2ePerTonne === 0.24 &&
+      calcData.specificPrecursorEmissionsTCO2ePerTonne === 0.15 &&
+      calcData.specificEmbeddedEmissionsTCO2ePerTonne === 0.99 &&
+      calcData.totalExportEmbeddedEmissionsTCO2e === 1485 &&
+      calcData.economicImpact?.estimatedCBAMCertificatesCostEUR === 96525 &&
+      calcData.economicImpact?.estimatedCBAMCertificatesCostMAD === 1042470 &&
+      calcData.deMinimisExemptionStatus?.isExempt === false;
+
+    // 2. Blocage strict si masse nulle (Règle 13)
+    const zeroRes = await request('/api/organizations/org-metal-oriental/cbam/calculate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' },
+      body: {
+        processEmissionsDirectTCO2e: 500,
+        productionTonnage: 0,
+        cnCode: '7214 20 00'
+      }
+    });
+    const isZeroBlocked = zeroRes.status === 422 && String(zeroRes.data?.error).includes('strictement supérieur à zéro');
+
+    if (isCalcSuccess && isZeroBlocked) {
+      logTest(25, 'Calculateur MACF Déterministe pour Marchandises Complexes (Annexe IV UE 2023/956)', true,
+        `SEE_dir=0.60, SEE_indir=0.24, SEE_pre=0.15 => SEE_total=0.99 tCO2e/t validé. Certificats: 96 525 € (1 042 470 MAD). Blocage masse nulle (HTTP 422) conforme règle 13.`);
+    } else {
+      logTest(25, 'Calculateur MACF Déterministe', false,
+        `calcSuccess=${isCalcSuccess}, zeroBlocked=${isZeroBlocked}, status=${calcRes.status}, data=${JSON.stringify(calcData)}`);
+    }
+  } catch (err: any) {
+    logTest(25, 'Calculateur MACF Déterministe', false, err.message);
+  }
+
+  // ============================================================================
+  // Test 26: Registre Installations UN/LOCODE, Produits et Dossier Déclarant Exportateur UE (JSON & Download)
+  // ============================================================================
+  try {
+    // 1. Création d'une nouvelle installation avec UN/LOCODE
+    const createInstRes = await request('/api/organizations/org-metal-oriental/cbam/installations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' },
+      body: {
+        name: 'Aciérie & Laminoir Nador Port Ouest',
+        city: 'Nador',
+        unlocode: 'MA NDR',
+        latitude: 35.2650,
+        longitude: -2.9340
+      }
+    });
+    const instId = createInstRes.data?.id;
+    const isInstCreated = createInstRes.status === 201 && !!instId;
+
+    // 2. Consultation des installations de l'entreprise
+    const getInstsRes = await request('/api/organizations/org-metal-oriental/cbam/installations', {
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' }
+    });
+    const hasInst = getInstsRes.status === 200 && Array.isArray(getInstsRes.data) &&
+      getInstsRes.data.some((i: any) => i.id === instId && i.unlocode === 'MA NDR');
+
+    // 3. Récupération du produit acier de référence
+    const prodsRes = await request('/api/organizations/org-metal-oriental/cbam/products', {
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' }
+    });
+    const prodAcier = prodsRes.data?.find((p: any) => p.cn_code === '7214 20 00' || p.id === 'prod-acier-7214');
+    const isProductFound = prodsRes.status === 200 && prodAcier && prodAcier.specific_total_emissions === 0.975;
+
+    // 4. Création d'un dossier de déclaration exportateur UE pour Thyssenkrupp Schulte GmbH (Allemagne)
+    const createDossierRes = await request('/api/organizations/org-metal-oriental/cbam/dossiers', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' },
+      body: {
+        cbamProductId: prodAcier.id,
+        importerName: 'Thyssenkrupp Schulte GmbH',
+        importerCountry: 'DE',
+        importerEori: 'DE12345678901234',
+        referencePeriod: '2026-Q1',
+        exportedTonnes: 4500,
+        carbonPricePaidLocalMAD: 0
+      }
+    });
+    const dossierId = createDossierRes.data?.id;
+    const isDossierCreated = createDossierRes.status === 201 && !!dossierId;
+
+    // 5. Téléchargement direct du dossier JSON officiel avec en-têtes HTTP de pièce jointe
+    const downloadRes = await request(`/api/organizations/org-metal-oriental/cbam/dossiers/${dossierId}/download`, {
+      headers: { Authorization: `Bearer ${tenantTokenMetal}`, 'X-Organization-Id': 'org-metal-oriental' }
+    });
+
+    const isDownloadValid = downloadRes.status === 200 &&
+      downloadRes.headers['content-type']?.includes('application/json') &&
+      downloadRes.headers['content-disposition']?.includes('attachment') &&
+      downloadRes.data?.cbamDeclaration?.regulation?.includes('2023/956') &&
+      downloadRes.data?.cbamDeclaration?.goodsExported?.exportedQuantityTonnes === 4500 &&
+      downloadRes.data?.cbamDeclaration?.totalExportEmissionsTCO2e?.totalEmbeddedTCO2e === 4387.5;
+
+    // 6. Test d'isolation inter-entreprises (Agro ne peut pas télécharger le dossier de Métal)
+    const crossTenantRes = await request(`/api/organizations/org-metal-oriental/cbam/dossiers/${dossierId}/download`, {
+      headers: { Authorization: `Bearer ${tenantTokenAgro}`, 'X-Organization-Id': 'org-metal-oriental' }
+    });
+    const isIsolated = crossTenantRes.status === 403;
+
+    if (isInstCreated && hasInst && isProductFound && isDossierCreated && isDownloadValid && isIsolated) {
+      logTest(26, 'Registre Installations UN/LOCODE, Produits et Dossier Déclarant UE (JSON & Download)', true,
+        `Installation MA NDR créée. Dossier Thyssenkrupp (4 500 t => 4 387.5 tCO2e) généré, téléchargé avec succès au format JSON conforme UE 2023/956, et accès cross-tenant neutralisé (HTTP 403).`);
+    } else {
+      logTest(26, 'Registre Installations & Dossier Déclarant UE', false,
+        `instCreated=${isInstCreated}, hasInst=${hasInst}, prodFound=${isProductFound}, dossierCreated=${isDossierCreated}, downloadValid=${isDownloadValid}, isolated=${isIsolated}`);
+    }
+  } catch (err: any) {
+    logTest(26, 'Registre Installations & Dossier Déclarant UE', false, err.message);
   }
 
   // ============================================================================

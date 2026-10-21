@@ -267,13 +267,39 @@ export const api = {
       })
   },
   cbam: {
-    getProducts: () => request<any[]>('/cbam/products'),
-    calculate: (data: any) =>
-      request<any>('/cbam/calculate', {
+    getInstallations: (orgId?: string) =>
+      request<any[]>(orgId ? `/organizations/${orgId}/cbam/installations` : '/cbam/installations'),
+    createInstallation: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/cbam/installations` : '/cbam/installations', {
         method: 'POST',
         body: JSON.stringify(data)
       }),
-    getDossiers: () => request<any[]>('/cbam/dossiers')
+    getProducts: (orgId?: string) =>
+      request<any[]>(orgId ? `/organizations/${orgId}/cbam/products` : '/cbam/products'),
+    createProduct: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/cbam/products` : '/cbam/products', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    calculate: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/cbam/calculate` : '/cbam/calculate', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getDossiers: (orgId?: string) =>
+      request<any[]>(orgId ? `/organizations/${orgId}/cbam/dossiers` : '/cbam/dossiers'),
+    createDossier: (data: any, orgId?: string) =>
+      request<any>(orgId ? `/organizations/${orgId}/cbam/dossiers` : '/cbam/dossiers', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+    getDossierDownloadUrl: (dossierId: string, orgId?: string) => {
+      const token = getStoredToken();
+      const base = orgId
+        ? `${API_BASE}/organizations/${orgId}/cbam/dossiers/${dossierId}/download`
+        : `${API_BASE}/cbam/dossiers/${dossierId}/download`;
+      return token ? `${base}?token=${token}${orgId ? `&orgId=${orgId}` : ''}` : base;
+    }
   },
   reduction: {
     getActions: (orgId?: string) => request<any[]>(orgId ? `/organizations/${orgId}/reduction-actions` : '/reduction/actions'),

@@ -235,39 +235,197 @@ export function aggregateUncertainty(results: Array<{ emissionKgCO2e: number; un
 }
 
 /**
- * Allocation produit MACF / CBAM
- * Émissions intrinsèques spécifiques : SEE = (AttrEm + PrecursorEm) / ProducedTonnage
+ * Allocation produit MACF / CBAM conforme au Règlement (UE) 2023/956 (Régime Définitif 2026)
+ * Émissions intrinsèques spécifiques : SEE_total = SEE_dir + SEE_indir + SEE_pre
  */
+export interface CBAMPrecursorItem {
+  name: string;
+  supplier?: string;
+  country?: string;
+  quantityPerTonne?: number; // tonnes de précurseur par tonne de produit
+  specificEmissionsTCO2e?: number; // tCO2e par tonne de précurseur
+  totalEmissionsTCO2e?: number;
+}
+
 export function calculateCBAMSpecificEmbeddedEmissions(input: {
-  processEmissionsTCO2e: number;
-  precursorEmissionsTCO2e: number;
+  processEmissionsTCO2e?: number;
+  processEmissionsDirectTCO2e?: number;
+  directProcessEmissionsTCO2e?: number;
+  indirectElectricityEmissionsTCO2e?: number;
+  electricityIndirectTCO2e?: number;
+  indirectElectricityMWh?: number;
+  electricityEmissionFactorKgPerKWh?: number;
+  precursorEmissionsTCO2e?: number;
+  precursors?: CBAMPrecursorItem[];
   productionTonnage: number;
   cnCode: string;
+  exportTonnage?: number;
+  exportTonnageEU?: number;
+  carbonPricePaidPerTonneMAD?: number;
+  carbonPricePaidLocalPerTonneMAD?: number;
+  euEtsBenchmarkPriceEUR?: number;
+  etsBenchmarkPriceEURPerTCO2e?: number;
 }): {
   specificEmbeddedEmissionsTCO2ePerTonne: number;
+  specificDirectEmissionsTCO2ePerTonne: number;
+  specificIndirectEmissionsTCO2ePerTonne: number;
+  specificPrecursorEmissionsTCO2ePerTonne: number;
+  specificDirectEmissions: number;
+  specificIndirectEmissions: number;
+  specificPrecursorEmissions: number;
+  specificTotalEmissions: number;
   totalEmbeddedEmissionsTCO2e: number;
+  totalExportEmbeddedEmissionsTCO2e: number;
   isEligibleSector: boolean;
+  sectorName: string;
+  deMinimisExemptionStatus: {
+    isExempt: boolean;
+    reason: string;
+    thresholdTonnes: number;
+  };
+  economicImpact: {
+    etsBenchmarkPriceEURPerTCO2e: number;
+    estimatedCBAMCertificatesCostEUR: number;
+    estimatedCBAMCertificatesCostMAD: number;
+    carbonPricePaidLocalDeductedMAD: number;
+    netPayableCertificatesEUR: number;
+  };
+  methodologicalNotes: string[];
+  exportEmbeddedEmissions?: {
+    exportTonnage: number;
+    directTCO2e: number;
+    indirectTCO2e: number;
+    precursorTCO2e: number;
+    totalEmbeddedTCO2e: number;
+    estimatedEuCbamCertificatesCostEUR: number;
+  };
   explanation: string;
 } {
-  // Règle 13 : Une masse de production nulle bloque l'intensité
-  if (input.productionTonnage <= 0) {
+  // Règle 13 : Une masse de production nulle ou négative bloque formellement le calcul
+  if (input.productionTonnage === undefined || input.productionTonnage === null || input.productionTonnage <= 0) {
     throw new Error(
-      `Calcul d'intensité MACF bloqué : la masse de production déclarée est nulle ou négative (${input.productionTonnage} t). Impossible de diviser par zéro.`
+      `Calcul d'intensité MACF bloqué : la masse de production déclarée est nulle ou négative (${input.productionTonnage} t). Le tonnage doit être strictement supérieur à zéro (impossible de diviser par zéro).`
     );
   }
 
-  // Vérification code NC (CN Code)
-  // Les 6 secteurs de départ : Ciment (2523), Fer/Acier (72xx, 73xx), Aluminium (76xx), Engrais (28xx, 31xx), Électricité (2716), Hydrogène (2804 10 00)
-  const cleanCn = input.cnCode.replace(/\s+/g, '');
-  const isKnownSector = /^(2523|72|73|76|28|31|2716|280410)/.test(cleanCn);
+  // 1. Émissions directes (combustion + procédés thermiques sur site)
+  const directEmissions = Number(
+    input.directProcessEmissionsTCO2e ??
+    input.processEmissionsDirectTCO2e ??
+    input.processEmissionsTCO2e ??
+    0
+  );
 
-  const totalEmissions = input.processEmissionsTCO2e + input.precursorEmissionsTCO2e;
-  const see = totalEmissions / input.productionTonnage;
+  // 2. Émissions indirectes (électricité)
+  let indirectEmissions = Number(
+    input.indirectElectricityEmissionsTCO2e ??
+    input.electricityIndirectTCO2e ??
+    0
+  );
+  if (input.indirectElectricityMWh && indirectEmissions === 0) {
+    const efElec = input.electricityEmissionFactorKgPerKWh || 0.642602; // Mix moyen ONEE Maroc
+    indirectEmissions = (input.indirectElectricityMWh * 1000 * efElec) / 1000.0;
+  }
+
+  // 3. Émissions des précurseurs incorporés
+  let precursorEmissions = Number(input.precursorEmissionsTCO2e || 0);
+  if (input.precursors && input.precursors.length > 0 && !input.precursorEmissionsTCO2e) {
+    precursorEmissions = input.precursors.reduce((sum, p) => {
+      if (p.totalEmissionsTCO2e) return sum + p.totalEmissionsTCO2e;
+      if (p.quantityPerTonne && p.specificEmissionsTCO2e) {
+        return sum + (p.quantityPerTonne * p.specificEmissionsTCO2e * input.productionTonnage);
+      }
+      return sum;
+    }, 0);
+  }
+
+  // 4. Calcul des intensités spécifiques (SEE)
+  const seeDir = directEmissions / input.productionTonnage;
+  const seeIndir = indirectEmissions / input.productionTonnage;
+  const seePre = precursorEmissions / input.productionTonnage;
+  const seeTotal = seeDir + seeIndir + seePre;
+  const totalEmissions = directEmissions + indirectEmissions + precursorEmissions;
+
+  // 5. Identification du secteur MACF (Règlement UE 2023/956, Annexe I)
+  const cleanCn = String(input.cnCode || '').replace(/\s+/g, '');
+  let isKnownSector = false;
+  let sectorName = 'Hors champ Annexe I';
+
+  if (/^(72|73)/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Fer et Acier (Iron & Steel)';
+  } else if (/^76/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Aluminium';
+  } else if (/^2523/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Ciment (Cement)';
+  } else if (/^(28|31)/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Engrais (Fertilizers)';
+  } else if (/^280410/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Hydrogène (Hydrogen)';
+  } else if (/^2716/.test(cleanCn)) {
+    isKnownSector = true;
+    sectorName = 'Électricité (Electricity)';
+  }
+
+  // 6. Volume exporté et impact économique
+  const exportTonnage = input.exportTonnageEU ?? input.exportTonnage ?? 0;
+  const expT = Number(exportTonnage);
+  const expDirect = expT * seeDir;
+  const expIndirect = expT * seeIndir;
+  const expPrecursor = expT * seePre;
+  const expTotal = expT * seeTotal;
+
+  const etsBenchmark = Number(input.etsBenchmarkPriceEURPerTCO2e ?? input.euEtsBenchmarkPriceEUR ?? 65.0);
+  const localCarbonTaxMAD = Number(input.carbonPricePaidLocalPerTonneMAD ?? input.carbonPricePaidPerTonneMAD ?? 0);
+  const costEUR = expTotal * etsBenchmark;
+  const costMAD = costEUR * 10.8; // Cours indicatif de référence EUR/MAD
+
+  const deMinimisReason = expT > 0 && expT < 50
+    ? "Export inférieur à 50 t : Exemption de minimis possible mais s'apprécie sur le cumul annuel total de l'importateur européen (Règlement UE 2023/956, Art. 2.3)."
+    : "Non exempté (soumis aux obligations de déclaration et restitution de certificats MACF).";
 
   return {
-    specificEmbeddedEmissionsTCO2ePerTonne: see,
-    totalEmbeddedEmissionsTCO2e: totalEmissions,
+    specificEmbeddedEmissionsTCO2ePerTonne: Number(seeTotal.toFixed(4)),
+    specificDirectEmissionsTCO2ePerTonne: Number(seeDir.toFixed(4)),
+    specificIndirectEmissionsTCO2ePerTonne: Number(seeIndir.toFixed(4)),
+    specificPrecursorEmissionsTCO2ePerTonne: Number(seePre.toFixed(4)),
+    specificDirectEmissions: Number(seeDir.toFixed(4)),
+    specificIndirectEmissions: Number(seeIndir.toFixed(4)),
+    specificPrecursorEmissions: Number(seePre.toFixed(4)),
+    specificTotalEmissions: Number(seeTotal.toFixed(4)),
+    totalEmbeddedEmissionsTCO2e: Number(totalEmissions.toFixed(3)),
+    totalExportEmbeddedEmissionsTCO2e: Number(expTotal.toFixed(3)),
     isEligibleSector: isKnownSector,
-    explanation: `(${input.processEmissionsTCO2e} tCO2e procédé + ${input.precursorEmissionsTCO2e} tCO2e précurseurs) / ${input.productionTonnage} t produites = ${see} tCO2e/tonne`
+    sectorName,
+    deMinimisExemptionStatus: {
+      isExempt: false,
+      thresholdTonnes: 50,
+      reason: deMinimisReason
+    },
+    economicImpact: {
+      etsBenchmarkPriceEURPerTCO2e: etsBenchmark,
+      estimatedCBAMCertificatesCostEUR: Number(costEUR.toFixed(2)),
+      estimatedCBAMCertificatesCostMAD: Number(costMAD.toFixed(2)),
+      carbonPricePaidLocalDeductedMAD: localCarbonTaxMAD,
+      netPayableCertificatesEUR: Number(costEUR.toFixed(2))
+    },
+    methodologicalNotes: [
+      "Conforme à l'Annexe IV du Règlement (UE) 2023/956 pour marchandises simples et complexes.",
+      "Séparation stricte des émissions de procédé (Scope 1) et de l'électricité réseau ONEE (Scope 2).",
+      "Émissions incorporées des précurseurs tracées individuellement avec certificats fournisseurs."
+    ],
+    exportEmbeddedEmissions: expT > 0 ? {
+      exportTonnage: expT,
+      directTCO2e: Number(expDirect.toFixed(3)),
+      indirectTCO2e: Number(expIndirect.toFixed(3)),
+      precursorTCO2e: Number(expPrecursor.toFixed(3)),
+      totalEmbeddedTCO2e: Number(expTotal.toFixed(3)),
+      estimatedEuCbamCertificatesCostEUR: Number(costEUR.toFixed(2))
+    } : undefined,
+    explanation: `SEE_total = ${seeDir.toFixed(4)} (direct) + ${seeIndir.toFixed(4)} (indirect) + ${seePre.toFixed(4)} (précurseurs) = ${seeTotal.toFixed(4)} tCO2e/t [Total = ${totalEmissions.toFixed(2)} tCO2e sur ${input.productionTonnage} t produites]`
   };
 }

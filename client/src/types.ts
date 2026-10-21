@@ -167,6 +167,20 @@ export interface ReductionAction {
   status: 'proposed' | 'in_progress' | 'completed' | 'cancelled';
 }
 
+export interface CBAMInstallation {
+  id: string;
+  organization_id: string;
+  name: string;
+  unlocode: string;
+  city: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+  contact_person?: string;
+  contact_email?: string;
+  created_at?: string;
+}
+
 export interface CBAMProduct {
   id: string;
   organization_id: string;
@@ -195,8 +209,36 @@ export interface CBAMDossier {
   importer_country: string;
   importer_eori?: string;
   reference_period: string;
+  exported_tonnes?: number;
+  total_embedded_emissions_tco2e?: number;
   dossier_json: string;
   created_at: string;
+}
+
+export interface CBAMCalculationResult {
+  isEligibleSector: boolean;
+  sectorName: string;
+  cnCode: string;
+  productionTonnage: number;
+  exportTonnageEU: number;
+  specificDirectEmissionsTCO2ePerTonne: number;
+  specificIndirectEmissionsTCO2ePerTonne: number;
+  specificPrecursorEmissionsTCO2ePerTonne: number;
+  specificEmbeddedEmissionsTCO2ePerTonne: number;
+  totalExportEmbeddedEmissionsTCO2e: number;
+  deMinimisExemptionStatus: {
+    isExempt: boolean;
+    reason: string;
+    thresholdTonnes: number;
+  };
+  economicImpact: {
+    etsBenchmarkPriceEURPerTCO2e: number;
+    estimatedCBAMCertificatesCostEUR: number;
+    estimatedCBAMCertificatesCostMAD: number;
+    carbonPricePaidLocalDeductedMAD: number;
+    netPayableCertificatesEUR: number;
+  };
+  methodologicalNotes: string[];
 }
 
 export interface Quote {
