@@ -312,17 +312,19 @@ app.post('/api/auth/register', (req, res) => {
   try {
     db.exec('BEGIN');
 
+    const cleanPhone = phone?.trim() || null;
+
     // 1. Utilisateur
     db.prepare(`
-      INSERT INTO users (id, email, password_hash, full_name, is_superadmin, created_at)
-      VALUES (?, ?, ?, ?, 0, ?)
-    `).run(userId, normalizedEmail, passwordHash, full_name.trim(), now);
+      INSERT INTO users (id, email, password_hash, full_name, is_superadmin, phone, created_at)
+      VALUES (?, ?, ?, ?, 0, ?, ?)
+    `).run(userId, normalizedEmail, passwordHash, full_name.trim(), cleanPhone, now);
 
     // 2. Entreprise / Organisation
     db.prepare(`
-      INSERT INTO organizations (id, name, legal_type, ice, city, sector, onboarding_step, onboarding_completed, created_at)
-      VALUES (?, ?, 'SARL', ?, ?, ?, 1, 0, ?)
-    `).run(orgId, company_name.trim(), ice?.trim() || null, city.trim(), sector.trim(), now);
+      INSERT INTO organizations (id, name, legal_type, ice, city, sector, phone, onboarding_step, onboarding_completed, created_at)
+      VALUES (?, ?, 'SARL', ?, ?, ?, ?, 1, 0, ?)
+    `).run(orgId, company_name.trim(), ice?.trim() || null, city.trim(), sector.trim(), cleanPhone, now);
 
     // 3. Adhésion Admin
     db.prepare(`
@@ -350,6 +352,47 @@ app.post('/api/auth/register', (req, res) => {
         id, organization_id, plan_name, status, sites_limit, users_limit, cbam_access, current_period_end, created_at
       ) VALUES (?, ?, 'essentiel', 'active', 5, 5, 1, ?, ?)
     `).run(subId, orgId, new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), now);
+
+    // 7. Enregistrement automatique dans la table CRM des leads
+    db.prepare(`
+      INSERT INTO leads (
+        id, full_name, email, phone, company, sector, city, employee_count,
+        has_existing_bilan, main_objective, message, status, notes, meeting_booked,
+        utm_source, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Non spécifié', 'non', 'Compte client créé', 'Inscription directe sur la plateforme', 'Client', ?, 0, 'inscription_directe', ?)
+    `).run(
+      `lead-reg-${Date.now()}`,
+      full_name.trim(),
+      normalizedEmail,
+      cleanPhone || '',
+      company_name.trim(),
+      sector.trim(),
+      city.trim(),
+      `Compte client créé (Org ID: ${orgId})`,
+      now
+    );
+
+    // 8. Notification immédiate à Abdelaziz Motiaa pour prise de contact
+    db.prepare(`
+      INSERT INTO dev_notifications (id, recipient_email, subject, template_name, content_html, sent_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      `notif-reg-${Date.now()}`,
+      OFFICIAL_CONSULTANT_EMAIL,
+      `[Atlas Carbone] Nouvelle entreprise inscrite — ${company_name.trim()}`,
+      'company_registration_alert',
+      `<h2>Nouvelle entreprise inscrite sur Atlas Carbone !</h2>
+       <p><strong>Entreprise :</strong> ${company_name.trim()}</p>
+       <p><strong>Responsable :</strong> ${full_name.trim()}</p>
+       <p><strong>Email :</strong> <a href="mailto:${normalizedEmail}">${normalizedEmail}</a></p>
+       <p><strong>Téléphone :</strong> ${cleanPhone ? `<a href="tel:${cleanPhone}">${cleanPhone}</a> | <a href="https://wa.me/${cleanPhone.replace(/[^0-9]/g, '')}">WhatsApp</a>` : 'Non renseigné'}</p>
+       <p><strong>Ville :</strong> ${city.trim()}</p>
+       <p><strong>Secteur :</strong> ${sector.trim()}</p>
+       <p><strong>Identifiant Organisation :</strong> ${orgId}</p>
+       <p><em>Inscrit le ${new Date().toLocaleString('fr-FR')}</em></p>`,
+      now
+    );
 
     db.exec('COMMIT');
   } catch (err: any) {

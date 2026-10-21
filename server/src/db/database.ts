@@ -515,6 +515,7 @@ export function initDatabaseSchema() {
   safeAddCol('leads', 'has_existing_bilan TEXT');
   safeAddCol('leads', 'main_objective TEXT');
   safeAddCol('leads', "status TEXT NOT NULL DEFAULT 'Nouveau'");
-  safeAddCol('leads', 'notes TEXT');
   safeAddCol('leads', 'meeting_booked INTEGER DEFAULT 0');
+  safeAddCol('organizations', 'phone TEXT');
+  safeAddCol('users', 'phone TEXT');
 }

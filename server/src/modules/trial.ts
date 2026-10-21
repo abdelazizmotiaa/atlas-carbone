@@ -458,6 +458,48 @@ trialRouter.post('/claim', (req: Request, res: Response) => {
   db.prepare('UPDATE guest_sessions SET claimed_at = ?, claimed_by_org_id = ? WHERE id = ?')
     .run(new Date().toISOString(), orgId, session.id);
 
+  // Enregistrement automatique dans la table CRM des leads
+  try {
+    db.prepare(`
+      INSERT INTO leads (
+        id, full_name, email, phone, company, sector, city, employee_count,
+        has_existing_bilan, main_objective, message, status, notes, meeting_booked,
+        utm_source, created_at
+      )
+      VALUES (?, ?, ?, '', ?, ?, ?, 'Non spécifié', 'oui', 'Dossier d’essai transféré vers compte', 'Conversion depuis essai invité', 'Client', ?, 0, 'essai_transfere', ?)
+    `).run(
+      `lead-claim-${Date.now()}`,
+      full_name.trim(),
+      normalizedEmail,
+      orgName,
+      session.sector,
+      city?.trim() || 'Casablanca',
+      `Session d'essai convertie (${guestActivities.length} activités transférées)`,
+      new Date().toISOString()
+    );
+
+    // Notification immédiate au consultant
+    db.prepare(`
+      INSERT INTO dev_notifications (id, recipient_email, subject, template_name, content_html, sent_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      `notif-claim-${Date.now()}`,
+      'abdelaziz.motiaa@gmail.com',
+      `[Atlas Carbone] Session essai convertie en compte — ${orgName}`,
+      'trial_claim_alert',
+      `<h2>Session d'essai convertie en compte entreprise !</h2>
+       <p><strong>Entreprise :</strong> ${orgName}</p>
+       <p><strong>Responsable :</strong> ${full_name.trim()}</p>
+       <p><strong>Email :</strong> <a href="mailto:${normalizedEmail}">${normalizedEmail}</a></p>
+       <p><strong>Secteur :</strong> ${session.sector}</p>
+       <p><strong>Activités calculées :</strong> ${guestActivities.length}</p>
+       <p><em>Date : ${new Date().toLocaleString('fr-FR')}</em></p>`,
+      new Date().toISOString()
+    );
+  } catch (e) {
+    console.warn("Avertissement enregistrement lead claim:", e);
+  }
+
   // Générer le jeton JWT
   const token = jwt.sign(
     { id: user.id, email: user.email, full_name: user.full_name, is_superadmin: user.is_superadmin },

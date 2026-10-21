@@ -15,7 +15,8 @@ import {
   ChevronRight,
   MessageSquare,
   Edit2,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { api } from '../api.js';
 
@@ -93,6 +94,57 @@ export const AdminLeadsView: React.FC = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (leads.length === 0) {
+      alert("Aucune donnée d'entreprise à exporter.");
+      return;
+    }
+    const headers = [
+      'ID',
+      'Date Inscription',
+      'Entreprise',
+      'Responsable',
+      'Email',
+      'Téléphone',
+      'Ville',
+      'Secteur Activité',
+      'Taille Entreprise',
+      'Bilan Existant',
+      'Objectif Principal',
+      'Statut CRM',
+      'RDV Calendly Réservé',
+      'Notes Internes'
+    ];
+
+    const rows = leads.map(l => [
+      l.id,
+      new Date(l.created_at).toLocaleDateString('fr-FR'),
+      `"${(l.company || '').replace(/"/g, '""')}"`,
+      `"${(l.full_name || '').replace(/"/g, '""')}"`,
+      `"${(l.email || '').replace(/"/g, '""')}"`,
+      `"${(l.phone || '').replace(/"/g, '""')}"`,
+      `"${(l.city || '').replace(/"/g, '""')}"`,
+      `"${(l.sector || '').replace(/"/g, '""')}"`,
+      `"${(l.employee_count || '').replace(/"/g, '""')}"`,
+      `"${(l.has_existing_bilan || '').replace(/"/g, '""')}"`,
+      `"${(l.main_objective || '').replace(/"/g, '""')}"`,
+      `"${(l.status || '').replace(/"/g, '""')}"`,
+      l.meeting_booked ? 'Oui' : 'Non',
+      `"${(l.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `entreprises_et_leads_atlas_carbone_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const filteredLeads = leads.filter(l => {
     const matchesSearch =
       l.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,19 +180,29 @@ export const AdminLeadsView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-            Pipeline Commercial & Demandes de Bilan Carbone
+            Pipeline Commercial & Entreprises Enregistrées
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Suivi des entreprises qualifiées, rendez-vous Calendly, cadrage des prestations et devis personnalisés
+            Suivi des entreprises enregistrées, rendez-vous Calendly, cadrage des prestations et devis personnalisés
           </p>
         </div>
-        <button
-          onClick={loadLeads}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Actualiser</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleExportCsv}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 text-white hover:bg-emerald-700 text-xs font-semibold shadow-sm transition"
+            title="Télécharger toutes les données d'entreprises sous format Excel / CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Exporter CSV (Excel)</span>
+          </button>
+          <button
+            onClick={loadLeads}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Actualiser</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
