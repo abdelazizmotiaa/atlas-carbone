@@ -27,6 +27,10 @@ export interface ReportPdfData {
     uncertaintyMinTCO2e: number;
     uncertaintyMaxTCO2e: number;
     uncertaintyPct: number;
+    intensityRevenueTCO2ePerMMad?: number;
+    intensityEmployeeTCO2ePerEmployee?: number;
+    intensityProductionTCO2ePerUnit?: number;
+    productionUnitName?: string;
   };
   activities: Array<{
     category: string;
@@ -201,6 +205,25 @@ export function generateReportPdf(data: ReportPdfData, lang: 'fr' | 'en' = 'fr')
             : `Combined uncertainty interval (95% CI): [${fmtNum(data.summary.uncertaintyMinTCO2e)} ; ${fmtNum(data.summary.uncertaintyMaxTCO2e)}] tCO₂e (± ${fmtNum(data.summary.uncertaintyPct, 1)}%) | Out-of-scope biogenic CO₂: ${fmtNum(data.summary.biogenicTCO2e)} tCO₂e`,
           45, yPos
         );
+
+      // Indicateurs d'Intensité Carbone (ISO 14064 §9)
+      const hasIntensity = (data.summary.intensityRevenueTCO2ePerMMad && data.summary.intensityRevenueTCO2ePerMMad > 0) ||
+                           (data.summary.intensityEmployeeTCO2ePerEmployee && data.summary.intensityEmployeeTCO2ePerEmployee > 0) ||
+                           (data.summary.intensityProductionTCO2ePerUnit && data.summary.intensityProductionTCO2ePerUnit > 0);
+
+      if (hasIntensity) {
+        yPos += 14;
+        doc.rect(45, yPos, 505, 20).fill('#F0FDF4').stroke('#BBF7D0');
+        const intensityText = [
+          data.summary.intensityRevenueTCO2ePerMMad ? `${fmtNum(data.summary.intensityRevenueTCO2ePerMMad)} tCO₂e / M MAD` : null,
+          data.summary.intensityEmployeeTCO2ePerEmployee ? `${fmtNum(data.summary.intensityEmployeeTCO2ePerEmployee)} tCO₂e / ${isFr ? 'employé' : 'employee'}` : null,
+          data.summary.intensityProductionTCO2ePerUnit ? `${fmtNum(data.summary.intensityProductionTCO2ePerUnit, 3)} tCO₂e / ${data.summary.productionUnitName || 'unité'}` : null
+        ].filter(Boolean).join('   |   ');
+
+        doc.fillColor(primaryColor).fontSize(7).font('Helvetica-Bold')
+          .text(`${isFr ? 'Intensité carbone d’activité :' : 'Carbon Intensity Indicators:'}  ${intensityText}`, 55, yPos + 6);
+        yPos += 8;
+      }
 
       // -----------------------------------------------------------------
       // SECTION 3 : TABLEAU DÉTAILLÉ DES ACTIVITÉS ENREGISTRÉES

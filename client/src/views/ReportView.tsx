@@ -155,9 +155,20 @@ export const ReportView: React.FC<ReportViewProps> = ({
             onClick={exportCsv}
             className="px-3.5 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+            <FileSpreadsheet className="w-4 h-4 text-slate-600" />
             <span>Exporter CSV</span>
           </button>
+
+          {/* Téléchargement Excel Officiel Multi-Onglets */}
+          <a
+            href={api.periods.getExcelUrl(currentOrgId, period.id, lang)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 text-emerald-900 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-2"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+            <span>Exporter Excel (.xlsx)</span>
+          </a>
 
           {/* Téléchargement PDF Serveur Officiel - Bouton Primaire Incontournable */}
           <a

@@ -1,8 +1,4 @@
-/**
- * Atlas Carbone - Vue Vue d'ensemble (Dashboard Exécutif)
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingDown,
   Building2,
@@ -20,9 +16,17 @@ import {
   BarChart3,
   Flame,
   Truck,
-  Leaf
+  Leaf,
+  Compass,
+  Coins,
+  Users,
+  Boxes,
+  Edit3,
+  X,
+  ArrowRight
 } from 'lucide-react';
 import { OverviewData, ReportingPeriod } from '../types.js';
+import { api } from '../api.js';
 
 interface DashboardOverviewViewProps {
   data: OverviewData | null;
@@ -32,7 +36,22 @@ interface DashboardOverviewViewProps {
   onNavigate: (view: string) => void;
   onClosePeriod: (periodId: string) => void;
   userRole?: string;
+  orgId?: string;
+  onOpenOnboarding?: () => void;
 }
+
+const ONBOARDING_TITLES = [
+  "1. Fiche entreprise & siège",
+  "2. Exercice & périmètre",
+  "3. Déclaration des sites",
+  "4. Questionnaire d'applicabilité",
+  "5. Collecte des factures & données",
+  "6. Affectation des tâches",
+  "7. Saisie des activités",
+  "8. Contrôle des anomalies",
+  "9. Révision & Clôture immuable",
+  "10. Édition des rapports officiels"
+];
 
 export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
   data,
@@ -41,10 +60,62 @@ export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
   onPeriodChange,
   onNavigate,
   onClosePeriod,
-  userRole
+  userRole,
+  orgId,
+  onOpenOnboarding
 }) => {
   const [scope2Method, setScope2Method] = useState<'location' | 'market'>('location');
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<number>(1);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(false);
+
+  // Modal d'édition des indicateurs d'activité / intensité
+  const [showIntensityModal, setShowIntensityModal] = useState(false);
+  const [inputRevenue, setInputRevenue] = useState<string>('');
+  const [inputEmployees, setInputEmployees] = useState<string>('');
+  const [inputProduction, setInputProduction] = useState<string>('');
+  const [inputUnitName, setInputUnitName] = useState<string>('unités');
+  const [savingIntensity, setSavingIntensity] = useState(false);
+
+  useEffect(() => {
+    if (orgId) {
+      api.organizations.getOnboarding(orgId)
+        .then(res => {
+          if (res?.onboarding_step) setOnboardingStep(res.onboarding_step);
+          if (res?.onboarding_completed !== undefined) setOnboardingCompleted(res.onboarding_completed);
+        })
+        .catch(console.error);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (data?.period) {
+      setInputRevenue(data.period.revenue_mad ? String(data.period.revenue_mad) : '');
+      setInputEmployees(data.period.employee_count ? String(data.period.employee_count) : '');
+      setInputProduction(data.period.production_units ? String(data.period.production_units) : '');
+      setInputUnitName(data.period.production_unit_name || 'unités');
+    }
+  }, [data?.period]);
+
+  const handleSaveIntensity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgId || !currentPeriodId) return;
+    setSavingIntensity(true);
+    try {
+      await api.periods.updateIntensity(orgId, currentPeriodId, {
+        revenue_mad: inputRevenue ? Number(inputRevenue) : 0,
+        employee_count: inputEmployees ? Number(inputEmployees) : 0,
+        production_units: inputProduction ? Number(inputProduction) : 0,
+        production_unit_name: inputUnitName || 'unités'
+      });
+      setShowIntensityModal(false);
+      onPeriodChange(currentPeriodId);
+    } catch (err: any) {
+      alert("Erreur mise à jour des indicateurs: " + err.message);
+    } finally {
+      setSavingIntensity(false);
+    }
+  };
 
   if (!data || !data.period) {
     return (
@@ -121,6 +192,49 @@ export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
               <span>Clôturer l'inventaire</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Stepper d'Onboarding Persistant */}
+      <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-brand-900 text-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+            <Compass className="w-5 h-5 text-emerald-300" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                Parcours Bilan Carbone • Étape {onboardingStep} sur 10
+              </span>
+              {onboardingCompleted && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                  Complet
+                </span>
+              )}
+            </div>
+            <h4 className="font-bold text-sm text-white mt-0.5">
+              {ONBOARDING_TITLES[onboardingStep - 1] || "Guide de progression"}
+            </h4>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <div className="hidden md:flex flex-col items-end text-xs text-emerald-200">
+            <span>Progression : {Math.round((onboardingStep / 10) * 100)}%</span>
+            <div className="w-28 bg-white/20 h-1.5 rounded-full mt-1 overflow-hidden">
+              <div
+                className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                style={{ width: `${(onboardingStep / 10) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+          <button
+            onClick={() => onOpenOnboarding?.()}
+            className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center space-x-1.5 shrink-0"
+          >
+            <span>Poursuivre le parcours</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -224,6 +338,66 @@ export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
             Achats matières, fret amont/aval, trajets
+          </div>
+        </div>
+      </div>
+
+      {/* Indicateurs d'Intensité Carbone (ISO 14064 §9 & Décret Marchés Publics) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-2">
+            <Coins className="w-4 h-4 text-emerald-800" />
+            <h3 className="font-bold text-slate-900 text-sm">
+              Indicateurs d'Intensité d'Activité & Ratios Économiques
+            </h3>
+          </div>
+          <button
+            onClick={() => setShowIntensityModal(true)}
+            className="text-xs text-brand-800 hover:text-brand-900 font-bold flex items-center space-x-1 cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Renseigner mes indicateurs (CA, Effectif, Production)</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          {/* Intensité Économique */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <span className="text-slate-500 block text-[11px] font-medium">Intensité Chiffre d'Affaires</span>
+            <div className="text-lg font-extrabold text-slate-900">
+              {summary.intensityRevenueTCO2ePerMMad
+                ? `${summary.intensityRevenueTCO2ePerMMad.toFixed(2)} tCO₂e / M MAD`
+                : <span className="text-xs font-normal text-slate-400 italic">Non renseigné</span>}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              CA déclaré : {period.revenue_mad ? `${period.revenue_mad.toLocaleString('fr-FR')} MAD` : '0 MAD'}
+            </p>
+          </div>
+
+          {/* Intensité Collaborateur */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <span className="text-slate-500 block text-[11px] font-medium">Intensité par Salarié (ETP)</span>
+            <div className="text-lg font-extrabold text-slate-900">
+              {summary.intensityEmployeeTCO2ePerEmployee
+                ? `${summary.intensityEmployeeTCO2ePerEmployee.toFixed(2)} tCO₂e / employé`
+                : <span className="text-xs font-normal text-slate-400 italic">Non renseigné</span>}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              Effectif : {period.employee_count ? `${period.employee_count} ETP` : '0'}
+            </p>
+          </div>
+
+          {/* Intensité Physique */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <span className="text-slate-500 block text-[11px] font-medium">Intensité Production Unitaire</span>
+            <div className="text-lg font-extrabold text-slate-900">
+              {summary.intensityProductionTCO2ePerUnit
+                ? `${summary.intensityProductionTCO2ePerUnit.toFixed(4)} tCO₂e / ${summary.productionUnitName || 'unité'}`
+                : <span className="text-xs font-normal text-slate-400 italic">Non renseigné</span>}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              Volume : {period.production_units ? `${period.production_units.toLocaleString('fr-FR')} ${summary.productionUnitName || 'unités'}` : '0'}
+            </p>
           </div>
         </div>
       </div>
@@ -365,6 +539,96 @@ export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
                 Confirmer la clôture immuable
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'Édition des Indicateurs d'Activité / Intensité */}
+      {showIntensityModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Coins className="w-5 h-5 text-emerald-800" />
+                <h3 className="text-base font-bold text-slate-900">Indicateurs d'Activité & Ratios</h3>
+              </div>
+              <button onClick={() => setShowIntensityModal(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Renseignez les données économiques de l'exercice {period.year} pour calculer automatiquement vos ratios d'intensité carbone conformément à la norme ISO 14064-1 (§9) et aux décrets marocains.
+            </p>
+
+            <form onSubmit={handleSaveIntensity} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Chiffre d'Affaires Annuel (MAD HT)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={inputRevenue}
+                  onChange={e => setInputRevenue(e.target.value)}
+                  placeholder="Ex: 25000000"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-700"
+                />
+                <span className="text-[10px] text-slate-400">Permet d'évaluer vos émissions en tCO₂e par Million de Dirhams.</span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Effectif Moyen Annuel (Salariés ETP)</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={inputEmployees}
+                  onChange={e => setInputEmployees(e.target.value)}
+                  placeholder="Ex: 85"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-700"
+                />
+                <span className="text-[10px] text-slate-400">Permet d'évaluer vos émissions par collaborateur.</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Volume de Production</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={inputProduction}
+                    onChange={e => setInputProduction(e.target.value)}
+                    placeholder="Ex: 12500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Unité produite</label>
+                  <input
+                    type="text"
+                    value={inputUnitName}
+                    onChange={e => setInputUnitName(e.target.value)}
+                    placeholder="Ex: tonnes, pièces, boîtes"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-700"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowIntensityModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingIntensity}
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow transition disabled:opacity-50"
+                >
+                  {savingIntensity ? 'Enregistrement...' : 'Enregistrer les ratios'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

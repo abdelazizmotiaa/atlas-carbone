@@ -44,6 +44,8 @@ export function initDatabaseSchema() {
       city TEXT,
       sector TEXT,
       logo_url TEXT,
+      onboarding_step INTEGER DEFAULT 1,
+      onboarding_completed INTEGER DEFAULT 0,
       created_at TEXT NOT NULL
     );
 
@@ -81,6 +83,10 @@ export function initDatabaseSchema() {
       closed_at TEXT,
       closed_by TEXT REFERENCES users(id),
       snapshot_json TEXT,
+      revenue_mad REAL DEFAULT 0,
+      employee_count INTEGER DEFAULT 0,
+      production_units REAL DEFAULT 0,
+      production_unit_name TEXT DEFAULT 'unités',
       created_at TEXT NOT NULL
     );
 
@@ -400,9 +406,26 @@ export function initDatabaseSchema() {
       created_at TEXT NOT NULL
     );
 
+    -- 21. Pièces justificatives et preuves de factures d'activité
+    CREATE TABLE IF NOT EXISTS activity_evidences (
+      id TEXT PRIMARY KEY,
+      activity_id TEXT NOT NULL REFERENCES activity_records(id) ON DELETE CASCADE,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      file_name TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      mime_type TEXT NOT NULL,
+      invoice_ref TEXT,
+      invoice_date TEXT,
+      uploaded_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+
     -- Index d'optimisation
     CREATE INDEX IF NOT EXISTS idx_activity_records_period ON activity_records(reporting_period_id);
     CREATE INDEX IF NOT EXISTS idx_activity_records_org ON activity_records(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_activity_evidences_act ON activity_evidences(activity_id);
+    CREATE INDEX IF NOT EXISTS idx_activity_evidences_org ON activity_evidences(organization_id);
     CREATE INDEX IF NOT EXISTS idx_emission_factors_scope ON emission_factors(scope);
     CREATE INDEX IF NOT EXISTS idx_emission_factors_cat ON emission_factors(category);
     CREATE INDEX IF NOT EXISTS idx_cbam_products_org ON cbam_products(organization_id);
@@ -412,4 +435,24 @@ export function initDatabaseSchema() {
     CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscribers(email);
     CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
   `);
+
+  // Migrations douces pour bases de données existantes
+  const safeAddCol = (table: string, columnDef: string) => {
+    try {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef};`);
+    } catch (_) {
+      // Colonne déjà existante
+    }
+  };
+
+  safeAddCol('organizations', 'onboarding_step INTEGER DEFAULT 1');
+  safeAddCol('organizations', 'onboarding_completed INTEGER DEFAULT 0');
+  safeAddCol('reporting_periods', 'revenue_mad REAL DEFAULT 0');
+  safeAddCol('reporting_periods', 'employee_count INTEGER DEFAULT 0');
+  safeAddCol('reporting_periods', 'production_units REAL DEFAULT 0');
+  safeAddCol('reporting_periods', "production_unit_name TEXT DEFAULT 'unités'");
+  safeAddCol('activity_records', 'evidence_file_name TEXT');
+  safeAddCol('activity_records', 'evidence_file_path TEXT');
+  safeAddCol('activity_records', 'evidence_file_size INTEGER');
+  safeAddCol('activity_records', 'evidence_uploaded_at TEXT');
 }

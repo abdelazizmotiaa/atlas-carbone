@@ -418,6 +418,8 @@ export const App: React.FC = () => {
               onNavigate={setCurrentView}
               onClosePeriod={handleClosePeriod}
               userRole={currentOrg?.role}
+              orgId={currentOrgId}
+              onOpenOnboarding={() => setShowOnboarding(true)}
             />
           )}
 
@@ -464,6 +466,7 @@ export const App: React.FC = () => {
         onClose={() => setShowOnboarding(false)}
         onNavigate={setCurrentView}
         orgName={currentOrg?.name || 'Votre entreprise'}
+        orgId={currentOrgId}
       />
     </div>
   );

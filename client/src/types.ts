@@ -38,6 +38,10 @@ export interface ReportingPeriod {
   end_date: string;
   consolidation_approach: string;
   status: 'draft' | 'collection' | 'in_review' | 'corrections_requested' | 'validated' | 'closed';
+  revenue_mad?: number | null;
+  employee_count?: number | null;
+  production_units?: number | null;
+  production_unit_name?: string | null;
   closed_at?: string;
   closed_by?: string;
   created_at: string;
@@ -116,6 +120,9 @@ export interface ActivityRecord {
   invoice_ref?: string;
   supplier_name?: string;
   evidence_url?: string;
+  evidence_file_name?: string;
+  evidence_file_size?: number;
+  evidence_uploaded_at?: string;
   status: string;
   notes?: string;
   created_at: string;
@@ -130,6 +137,10 @@ export interface OverviewData {
     scope3TCO2e: number;
     biogenicTCO2e: number;
     totalActivitiesCount: number;
+    intensityRevenueTCO2ePerMMad?: number | null;
+    intensityEmployeeTCO2ePerEmployee?: number | null;
+    intensityProductionTCO2ePerUnit?: number | null;
+    productionUnitName?: string | null;
   };
   byScope: Array<{ scope: number; label: string; tco2e: number }>;
   byCategory: Array<{ label: string; scope: number; tco2e: number }>;

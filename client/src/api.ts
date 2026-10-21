@@ -86,7 +86,14 @@ export const api = {
   organizations: {
     list: () => request<any[]>('/organizations'),
     getOverview: (orgId: string, periodId?: string) =>
-      request<any>(`/organizations/${orgId}/overview${periodId ? `?periodId=${periodId}` : ''}`)
+      request<any>(`/organizations/${orgId}/overview${periodId ? `?periodId=${periodId}` : ''}`),
+    getOnboarding: (orgId: string) =>
+      request<{ onboarding_step: number; onboarding_completed: boolean }>(`/organizations/${orgId}/onboarding`),
+    updateOnboarding: (orgId: string, data: { step: number; completed?: boolean }) =>
+      request<{ success: boolean; onboarding_step: number; onboarding_completed: boolean }>(`/organizations/${orgId}/onboarding`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
   },
   periods: {
     list: (orgId: string) => request<any[]>(`/organizations/${orgId}/periods`),
@@ -95,12 +102,19 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data)
       }),
+    updateIntensity: (orgId: string, periodId: string, data: { revenue_mad?: number; employee_count?: number; production_units?: number; production_unit_name?: string }) =>
+      request<any>(`/organizations/${orgId}/periods/${periodId}/intensity`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
     close: (orgId: string, periodId: string) =>
       request<any>(`/organizations/${orgId}/periods/${periodId}/close`, {
         method: 'POST'
       }),
     getPdfUrl: (orgId: string, periodId: string, lang = 'fr') =>
       `${API_BASE}/organizations/${orgId}/periods/${periodId}/pdf?lang=${lang}`,
+    getExcelUrl: (orgId: string, periodId: string, lang = 'fr') =>
+      `${API_BASE}/organizations/${orgId}/periods/${periodId}/excel?lang=${lang}`,
     getMethodologicalAnnex: (orgId: string, periodId: string) =>
       request<any>(`/organizations/${orgId}/periods/${periodId}/methodological-annex`),
     getReviews: (orgId: string, periodId: string) =>
@@ -133,6 +147,29 @@ export const api = {
       request<any>(`/organizations/${orgId}/activities/${activityId}`, {
         method: 'DELETE'
       }),
+    uploadEvidence: async (orgId: string, activityId: string, file: File, invoiceRef?: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (invoiceRef) formData.append('invoice_ref', invoiceRef);
+
+      const token = getStoredToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      headers['x-organization-id'] = orgId;
+
+      const res = await fetch(`${API_BASE}/organizations/${orgId}/activities/${activityId}/evidence`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `Erreur téléversement (${res.status})`);
+      return data;
+    },
+    listEvidences: (orgId: string, activityId: string) =>
+      request<any[]>(`/organizations/${orgId}/activities/${activityId}/evidence`),
+    getEvidenceDownloadUrl: (orgId: string, evidenceId: string) =>
+      `${API_BASE}/organizations/${orgId}/evidences/${evidenceId}/download`,
     getCatalogOptions: (params?: { category?: string; scope?: number; q?: string }) => {
       const q = new URLSearchParams(params as any).toString();
       return request<any[]>(`/activities/catalog-options${q ? `?${q}` : ''}`);

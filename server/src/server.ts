@@ -23,15 +23,50 @@ import {
   UNIT_REGISTRY
 } from './core/units.js';
 import { generateReportPdf, ReportPdfData } from './core/pdfReport.js';
+import { generateExcelReport, ExcelReportData } from './core/excelReport.js';
 import { trialRouter } from './modules/trial.js';
 import { contentRouter } from './modules/content.js';
 import { assistantRouter } from './modules/assistant.js';
 import { pricingRouter } from './modules/pricing.js';
 import { SECTOR_PROFILES } from './modules/sectors.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import multer from 'multer';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'atlas_carbone_secret_key_2026_maroc';
+
+// Dossier de stockage sécurisé des pièces jointes d'activité (factures, preuves)
+const UPLOADS_DIR = path.resolve(process.cwd(), 'data/uploads/evidences');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `proof-${uniqueSuffix}${ext}`);
+  }
+});
+
+const uploadEvidence = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Format de fichier non autorisé. Formats acceptés : PDF, PNG, JPG/JPEG (max 10 Mo)."));
+    }
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -259,6 +294,37 @@ app.get('/api/organizations', authenticateToken, (req, res) => {
   res.json(orgsStmt.all(req.user!.id));
 });
 
+// Suivi et persistance de l'onboarding guidé par entreprise
+app.get('/api/organizations/:orgId/onboarding', authenticateToken, requireTenant, (req, res) => {
+  const org: any = db.prepare('SELECT onboarding_step, onboarding_completed FROM organizations WHERE id = ?').get(req.organizationId!);
+  if (!org) return res.status(404).json({ error: "Entreprise introuvable." });
+  res.json({
+    onboarding_step: org.onboarding_step || 1,
+    onboardingStep: org.onboarding_step || 1,
+    onboarding_completed: Boolean(org.onboarding_completed),
+    onboardingCompleted: Boolean(org.onboarding_completed)
+  });
+});
+
+app.post('/api/organizations/:orgId/onboarding', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const orgId = req.organizationId!;
+  const newStep = Number(req.body.step || req.body.onboarding_step || req.body.onboardingStep) || 1;
+  const isCompleted = req.body.completed !== undefined
+    ? (req.body.completed ? 1 : 0)
+    : (req.body.onboarding_completed !== undefined ? (req.body.onboarding_completed ? 1 : 0) : (newStep >= 10 ? 1 : 0));
+
+  db.prepare('UPDATE organizations SET onboarding_step = ?, onboarding_completed = ? WHERE id = ?').run(newStep, isCompleted, orgId);
+  logAudit(orgId, req.user!.id, 'UPDATE_ONBOARDING_STEP', 'organizations', orgId, { step: newStep, completed: isCompleted });
+
+  res.json({
+    success: true,
+    onboarding_step: newStep,
+    onboardingStep: newStep,
+    onboarding_completed: Boolean(isCompleted),
+    onboardingCompleted: Boolean(isCompleted)
+  });
+});
+
 app.get('/api/organizations/:orgId/overview', authenticateToken, requireTenant, (req, res) => {
   const orgId = req.organizationId!;
   const periodId = req.query.periodId as string;
@@ -333,18 +399,27 @@ app.get('/api/organizations/:orgId/overview', authenticateToken, requireTenant, 
   }
 
   const uncAgg = aggregateUncertainty(uncItems);
+  const totalTCO2e = (scope1Kg + scope2Kg + scope3Kg) / 1000.0;
+  const revMMad = (period.revenue_mad && period.revenue_mad > 0) ? (period.revenue_mad / 1000000.0) : null;
+  const intensityRevenueTCO2ePerMMad = revMMad ? totalTCO2e / revMMad : null;
+  const intensityEmployeeTCO2ePerEmployee = (period.employee_count && period.employee_count > 0) ? totalTCO2e / period.employee_count : null;
+  const intensityProductionTCO2ePerUnit = (period.production_units && period.production_units > 0) ? totalTCO2e / period.production_units : null;
 
   res.json({
     period,
     summary: {
-      totalTCO2e: (scope1Kg + scope2Kg + scope3Kg) / 1000.0,
+      totalTCO2e,
       scope1TCO2e: scope1Kg / 1000.0,
       scope2TCO2e: scope2Kg / 1000.0,
       scope3TCO2e: scope3Kg / 1000.0,
       biogenicTCO2e: biogenicKg / 1000.0,
-      totalActivitiesCount: activities.length
+      totalActivitiesCount: activities.length,
+      intensityRevenueTCO2ePerMMad,
+      intensityEmployeeTCO2ePerEmployee,
+      intensityProductionTCO2ePerUnit,
+      productionUnitName: period.production_unit_name || 'unités'
     },
-    total_tco2e: (scope1Kg + scope2Kg + scope3Kg) / 1000.0,
+    total_tco2e: totalTCO2e,
     scope1_tco2e: scope1Kg / 1000.0,
     scope2_tco2e: scope2Kg / 1000.0,
     scope3_tco2e: scope3Kg / 1000.0,
@@ -388,6 +463,38 @@ app.post('/api/organizations/:orgId/periods', authenticateToken, requireTenant, 
 
   logAudit(req.organizationId!, req.user!.id, 'CREATE_REPORTING_PERIOD', 'reporting_periods', id, { name, year });
   res.status(201).json({ id, name, year, status: 'draft' });
+});
+
+// Mise à jour des métriques d'intensité carbone (Chiffre d'affaires, effectif, production)
+app.put('/api/organizations/:orgId/periods/:periodId/intensity', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager']), (req, res) => {
+  const { periodId, orgId } = req.params;
+  const rev = req.body.revenue_mad !== undefined ? req.body.revenue_mad : req.body.revenueMad;
+  const emp = req.body.employee_count !== undefined ? req.body.employee_count : req.body.employeeCount;
+  const prod = req.body.production_units !== undefined ? req.body.production_units : req.body.productionUnits;
+  const unitName = req.body.production_unit_name !== undefined ? req.body.production_unit_name : req.body.productionUnitName;
+
+  const period: any = db.prepare('SELECT * FROM reporting_periods WHERE id = ? AND organization_id = ?').get(periodId, orgId);
+  if (!period) return res.status(404).json({ error: "Exercice introuvable." });
+
+  db.prepare(`
+    UPDATE reporting_periods
+    SET revenue_mad = ?, employee_count = ?, production_units = ?, production_unit_name = ?
+    WHERE id = ? AND organization_id = ?
+  `).run(
+    Number(rev) || 0,
+    Number(emp) || 0,
+    Number(prod) || 0,
+    unitName ? String(unitName) : 'unités',
+    periodId,
+    orgId
+  );
+
+  logAudit(orgId, req.user!.id, 'UPDATE_PERIOD_INTENSITY', 'reporting_periods', periodId, {
+    revenue_mad: rev, employee_count: emp, production_units: prod, production_unit_name: unitName
+  });
+
+  const updated = db.prepare('SELECT * FROM reporting_periods WHERE id = ?').get(periodId);
+  res.json(updated);
 });
 
 app.post('/api/organizations/:orgId/periods/:periodId/close', authenticateToken, requireTenant, requireRole(['admin']), (req, res) => {
@@ -621,6 +728,88 @@ app.delete('/api/organizations/:orgId/activities/:activityId', authenticateToken
   res.json({ message: "Activité supprimée avec succès." });
 });
 
+// 5.d Gestion des pièces justificatives et preuves de factures (PDF, PNG, JPG)
+app.post('/api/organizations/:orgId/activities/:activityId/evidence', authenticateToken, requireTenant, requireRole(['admin', 'carbon_manager', 'site_manager', 'contributor']), uploadEvidence.single('file'), (req, res) => {
+  const { orgId, activityId } = req.params;
+  const { invoice_ref, invoice_date } = req.body;
+
+  if (!req.file) {
+    return res.status(400).json({ error: "Aucun fichier téléversé. Veuillez sélectionner une pièce jointe (PDF, PNG, JPG)." });
+  }
+
+  const activity: any = db.prepare('SELECT * FROM activity_records WHERE id = ? AND organization_id = ?').get(activityId, orgId);
+  if (!activity) {
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+    return res.status(404).json({ error: "Activité introuvable." });
+  }
+
+  const evidenceId = `evid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO activity_evidences (
+      id, activity_id, organization_id, file_name, file_path, file_size, mime_type, invoice_ref, invoice_date, uploaded_by, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    evidenceId, activityId, orgId, req.file.originalname, req.file.filename, req.file.size, req.file.mimetype,
+    invoice_ref || activity.invoice_ref || null, invoice_date || null, req.user!.id, now
+  );
+
+  db.prepare(`
+    UPDATE activity_records
+    SET evidence_file_name = ?, evidence_file_path = ?, evidence_file_size = ?, evidence_uploaded_at = ?, invoice_ref = COALESCE(?, invoice_ref)
+    WHERE id = ?
+  `).run(req.file.originalname, req.file.filename, req.file.size, now, invoice_ref || null, activityId);
+
+  logAudit(orgId, req.user!.id, 'UPLOAD_ACTIVITY_EVIDENCE', 'activity_records', activityId, {
+    evidenceId, fileName: req.file.originalname, fileSize: req.file.size
+  });
+
+  res.status(201).json({
+    success: true,
+    id: evidenceId,
+    activity_id: activityId,
+    file_name: req.file.originalname,
+    file_size: req.file.size,
+    evidence: {
+      id: evidenceId,
+      activityId,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      createdAt: now
+    },
+    created_at: now
+  });
+});
+
+app.get('/api/organizations/:orgId/activities/:activityId/evidence', authenticateToken, requireTenant, (req, res) => {
+  const { orgId, activityId } = req.params;
+  const evidences = db.prepare(`
+    SELECT id, activity_id, file_name, file_size, mime_type, invoice_ref, invoice_date, created_at
+    FROM activity_evidences
+    WHERE activity_id = ? AND organization_id = ?
+    ORDER BY created_at DESC
+  `).all(activityId, orgId);
+
+  res.json(evidences);
+});
+
+app.get('/api/organizations/:orgId/evidences/:evidenceId/download', authenticateToken, requireTenant, (req, res) => {
+  const { orgId, evidenceId } = req.params;
+  const evidence: any = db.prepare('SELECT * FROM activity_evidences WHERE id = ? AND organization_id = ?').get(evidenceId, orgId);
+  if (!evidence) {
+    return res.status(404).json({ error: "Pièce justificative introuvable ou accès refusé." });
+  }
+
+  const physicalPath = path.join(UPLOADS_DIR, evidence.file_path);
+  if (!fs.existsSync(physicalPath)) {
+    return res.status(404).json({ error: "Fichier physique introuvable sur le serveur." });
+  }
+
+  res.download(physicalPath, evidence.file_name);
+});
+
 // -------------------------------------------------------------
 // 6. Catalogue des Facteurs d'Émission (Protégé & Confidentiel)
 // -------------------------------------------------------------
@@ -794,6 +983,11 @@ app.get('/api/organizations/:orgId/periods/:periodId/pdf', authenticateToken, re
   }
 
   const uncAgg = aggregateUncertainty(uncItems);
+  const totalTCO2e = (s1 + s2 + s3) / 1000.0;
+  const revMMad = (period.revenue_mad && period.revenue_mad > 0) ? (period.revenue_mad / 1000000.0) : null;
+  const intensityRevenueTCO2ePerMMad = revMMad ? totalTCO2e / revMMad : null;
+  const intensityEmployeeTCO2ePerEmployee = (period.employee_count && period.employee_count > 0) ? totalTCO2e / period.employee_count : null;
+  const intensityProductionTCO2ePerUnit = (period.production_units && period.production_units > 0) ? totalTCO2e / period.production_units : null;
 
   const pdfData: ReportPdfData = {
     companyName: org.name,
@@ -808,14 +1002,18 @@ app.get('/api/organizations/:orgId/periods/:periodId/pdf', authenticateToken, re
       : (lang === 'en' ? 'Draft in progress' : 'Brouillon en cours'),
     generatedDate: new Date().toISOString().split('T')[0],
     summary: {
-      totalTCO2e: (s1 + s2 + s3) / 1000.0,
+      totalTCO2e,
       scope1TCO2e: s1 / 1000.0,
       scope2TCO2e: s2 / 1000.0,
       scope3TCO2e: s3 / 1000.0,
       biogenicTCO2e: bio / 1000.0,
       uncertaintyMinTCO2e: uncAgg.confidenceInterval95Kg.min / 1000.0,
       uncertaintyMaxTCO2e: uncAgg.confidenceInterval95Kg.max / 1000.0,
-      uncertaintyPct: uncAgg.uncertaintyRelativePct
+      uncertaintyPct: uncAgg.uncertaintyRelativePct,
+      intensityRevenueTCO2ePerMMad: intensityRevenueTCO2ePerMMad || undefined,
+      intensityEmployeeTCO2ePerEmployee: intensityEmployeeTCO2ePerEmployee || undefined,
+      intensityProductionTCO2ePerUnit: intensityProductionTCO2ePerUnit || undefined,
+      productionUnitName: period.production_unit_name || 'unités'
     },
     activities: activities.map(a => ({
       category: a.category,
@@ -849,6 +1047,128 @@ app.get('/api/organizations/:orgId/periods/:periodId/pdf', authenticateToken, re
     res.send(pdfBuffer);
   } catch (err: any) {
     res.status(500).json({ error: "Erreur lors de la génération du rapport PDF: " + err.message });
+  }
+});
+
+// 6.g Génération du Rapport Excel (.xlsx) Officiel Côté Serveur (Audit ISO 14064 multi-onglets)
+app.get('/api/organizations/:orgId/periods/:periodId/excel', authenticateToken, requireTenant, async (req, res) => {
+  const { orgId, periodId } = req.params;
+  const lang = (req.query.lang === 'en' ? 'en' : 'fr') as 'fr' | 'en';
+
+  const org: any = db.prepare('SELECT * FROM organizations WHERE id = ?').get(orgId);
+  const period: any = db.prepare('SELECT * FROM reporting_periods WHERE id = ? AND organization_id = ?').get(periodId, orgId);
+  if (!org || !period) return res.status(404).json({ error: "Organisation ou exercice introuvable." });
+
+  const activities: any[] = db.prepare(`
+    SELECT a.*, f.name as factor_name, f.source as factor_source
+    FROM activity_records a
+    LEFT JOIN emission_factors f ON a.factor_id = f.id
+    WHERE a.reporting_period_id = ? AND a.organization_id = ? AND a.status = 'active'
+    ORDER BY a.scope ASC, a.created_at ASC
+  `).all(periodId, orgId);
+
+  const unquantified: any[] = db.prepare(`
+    SELECT * FROM unquantified_activities
+    WHERE reporting_period_id = ? AND organization_id = ?
+    ORDER BY created_at ASC
+  `).all(periodId, orgId);
+
+  const actions: any[] = db.prepare(`
+    SELECT * FROM reduction_actions
+    WHERE organization_id = ?
+    ORDER BY target_year ASC
+  `).all(orgId);
+
+  let s1 = 0, s2 = 0, s3 = 0, bio = 0;
+  const uncItems: any[] = [];
+  for (const a of activities) {
+    if (a.is_biogenic) bio += a.emission_kg_co2e;
+    else {
+      if (a.scope === 1) s1 += a.emission_kg_co2e;
+      else if (a.scope === 2) s2 += a.emission_kg_co2e;
+      else if (a.scope === 3) s3 += a.emission_kg_co2e;
+    }
+    uncItems.push({
+      emissionKgCO2e: a.emission_kg_co2e,
+      uncertaintyAbsoluteKg: a.uncertainty_absolute_kg || (a.emission_kg_co2e * 0.20)
+    });
+  }
+
+  const uncAgg = aggregateUncertainty(uncItems);
+  const totalTCO2e = (s1 + s2 + s3) / 1000.0;
+  const revMMad = (period.revenue_mad && period.revenue_mad > 0) ? (period.revenue_mad / 1000000.0) : null;
+  const intensityRevenueTCO2ePerMMad = revMMad ? totalTCO2e / revMMad : null;
+  const intensityEmployeeTCO2ePerEmployee = (period.employee_count && period.employee_count > 0) ? totalTCO2e / period.employee_count : null;
+  const intensityProductionTCO2ePerUnit = (period.production_units && period.production_units > 0) ? totalTCO2e / period.production_units : null;
+
+  const excelData: ExcelReportData = {
+    companyName: org.name,
+    city: org.city || 'Maroc',
+    ice: org.ice || '',
+    sector: org.sector || 'Général',
+    periodYear: period.year,
+    consolidationApproach: period.consolidation_approach || 'operational_control',
+    status: period.status === 'closed'
+      ? (lang === 'en' ? 'Locked / Final' : 'Clôturé & Immuable')
+      : (lang === 'en' ? 'Draft in progress' : 'Brouillon en cours'),
+    generatedDate: new Date().toISOString().split('T')[0],
+    revenueMad: period.revenue_mad,
+    employeeCount: period.employee_count,
+    productionUnits: period.production_units,
+    productionUnitName: period.production_unit_name,
+    summary: {
+      totalTCO2e,
+      scope1TCO2e: s1 / 1000.0,
+      scope2TCO2e: s2 / 1000.0,
+      scope3TCO2e: s3 / 1000.0,
+      biogenicTCO2e: bio / 1000.0,
+      uncertaintyMinTCO2e: uncAgg.confidenceInterval95Kg.min / 1000.0,
+      uncertaintyMaxTCO2e: uncAgg.confidenceInterval95Kg.max / 1000.0,
+      uncertaintyPct: uncAgg.uncertaintyRelativePct,
+      intensityRevenueTCO2ePerMMad: intensityRevenueTCO2ePerMMad || undefined,
+      intensityEmployeeTCO2ePerEmployee: intensityEmployeeTCO2ePerEmployee || undefined,
+      intensityProductionTCO2ePerUnit: intensityProductionTCO2ePerUnit || undefined
+    },
+    activities: activities.map(a => ({
+      category: a.category,
+      scope: a.scope,
+      label: a.label,
+      quantity: a.quantity,
+      unit: a.unit,
+      emissionKgCO2e: a.emission_kg_co2e,
+      emissionTCO2e: a.emission_t_co2e,
+      factorId: a.factor_id,
+      factorName: a.factor_name,
+      factorSource: a.factor_source,
+      uncertaintyPct: a.uncertainty_relative,
+      invoiceRef: a.invoice_ref,
+      supplierName: a.supplier_name,
+      evidenceFileName: a.evidence_file_name
+    })),
+    unquantified: unquantified.map(u => ({
+      category: u.category,
+      label: u.label,
+      reason: u.reason,
+      notes: u.notes
+    })),
+    reductionActions: actions.map(act => ({
+      title: act.title,
+      category: act.category,
+      responsible: act.responsible,
+      targetYear: act.target_year,
+      savingsTCO2e: act.annual_savings_tco2e,
+      costMad: act.cost_mad,
+      status: act.status
+    }))
+  };
+
+  try {
+    const excelBuffer = await generateExcelReport(excelData, lang);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Inventaire_GES_${org.name.replace(/[^a-zA-Z0-9]/g, '_')}_${period.year}.xlsx"`);
+    res.send(excelBuffer);
+  } catch (err: any) {
+    res.status(500).json({ error: "Erreur lors de la génération du classeur Excel: " + err.message });
   }
 });
 

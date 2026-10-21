@@ -21,7 +21,10 @@ import {
   ArrowRightLeft,
   Sparkles,
   Coins,
-  Lock
+  Lock,
+  Upload,
+  Paperclip,
+  FileCheck
 } from 'lucide-react';
 import { ActivityRecord, Site, EmissionFactor, CalculationTrace } from '../types.js';
 import { api } from '../api.js';
@@ -61,6 +64,13 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   const [formInvoiceRef, setFormInvoiceRef] = useState('');
   const [formSupplier, setFormSupplier] = useState('');
   const [formNotes, setFormNotes] = useState('');
+  const [formEvidenceFile, setFormEvidenceFile] = useState<File | null>(null);
+
+  // Modal Justificatif / Preuve d'audit pour ligne existante
+  const [uploadTargetActId, setUploadTargetActId] = useState<string | null>(null);
+  const [uploadTargetActLabel, setUploadTargetActLabel] = useState<string>('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState<boolean>(false);
 
   // Assistant Factures & Convertisseur
   const [billPresets, setBillPresets] = useState<any[]>([]);
@@ -174,7 +184,7 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     }
 
     try {
-      await api.activities.create(orgId, {
+      const created = await api.activities.create(orgId, {
         reporting_period_id: periodId,
         site_id: formSiteId || sites[0]?.id,
         label: formLabel,
@@ -186,13 +196,41 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
         notes: formNotes
       });
 
+      if (formEvidenceFile && created && (created as any).id) {
+        try {
+          await api.activities.uploadEvidence(orgId, (created as any).id, formEvidenceFile, formInvoiceRef || undefined);
+        } catch (uploadErr) {
+          console.error("Erreur téléversement justificatif:", uploadErr);
+        }
+      }
+
       setShowAddModal(false);
       setFormLabel('');
       setFormQuantity('');
+      setFormInvoiceRef('');
+      setFormSupplier('');
+      setFormNotes('');
+      setFormEvidenceFile(null);
       fetchActivities();
       onRefreshOverview();
     } catch (err: any) {
       alert("Erreur lors du calcul ou de l'enregistrement: " + err.message);
+    }
+  };
+
+  const handleUploadEvidenceForExisting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadTargetActId || !uploadFile) return;
+    setUploading(true);
+    try {
+      await api.activities.uploadEvidence(orgId, uploadTargetActId, uploadFile);
+      setUploadTargetActId(null);
+      setUploadFile(null);
+      fetchActivities();
+    } catch (err: any) {
+      alert("Erreur téléversement : " + (err.message || 'Échec'));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -369,13 +407,14 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                 <th className="py-3 px-4">Quantité saisie</th>
                 <th className="py-3 px-4 text-right">Émissions calculées</th>
                 <th className="py-3 px-4 text-center">Incertitude</th>
+                <th className="py-3 px-4 text-center">Facture / Audit</th>
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredActivities.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     Aucune donnée d'activité trouvée pour ces filtres.
                   </td>
                 </tr>
@@ -431,6 +470,36 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                         <span className="text-[11px] px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold">
                           ±{((act.uncertainty_relative || 0.2) * 100).toFixed(0)}%
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {act.evidence_file_name ? (
+                          <a
+                            href={api.activities.getEvidenceDownloadUrl(orgId, act.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                            download
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition max-w-[150px] truncate"
+                            title={`Télécharger le justificatif : ${act.evidence_file_name}`}
+                          >
+                            <FileCheck className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                            <span className="truncate">{act.evidence_file_name}</span>
+                            <Download className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                          </a>
+                        ) : !isPeriodClosed ? (
+                          <button
+                            onClick={() => {
+                              setUploadTargetActId(act.id);
+                              setUploadTargetActLabel(act.label);
+                            }}
+                            className="inline-flex items-center space-x-1 text-[11px] text-slate-500 hover:text-emerald-800 hover:bg-emerald-50 border border-dashed border-slate-300 hover:border-emerald-300 px-2 py-1 rounded-lg transition"
+                            title="Joindre une facture ou un bon de livraison"
+                          >
+                            <Upload className="w-3 h-3" />
+                            <span>Joindre</span>
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 italic">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center space-x-2">
@@ -873,6 +942,34 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                   onChange={e => setFormNotes(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center space-x-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Justificatif d'audit / Facture (PDF, Image - max 10 Mo)</span>
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
+                    onChange={e => setFormEvidenceFile(e.target.files?.[0] || null)}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                  />
+                  {formEvidenceFile && (
+                    <button
+                      type="button"
+                      onClick={() => setFormEvidenceFile(null)}
+                      className="text-slate-400 hover:text-rose-500 p-1"
+                      title="Retirer le fichier"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Document archivé pour vérification et audit ISO 14064-1 (ex: Facture ONEE, bon de livraison carburant).
+                </p>
               </div>
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100">
@@ -1364,6 +1461,75 @@ export const ActivitiesView: React.FC<ActivitiesViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Attacher / Remplacer Justificatif d'audit */}
+      {uploadTargetActId && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Paperclip className="w-5 h-5 text-emerald-800" />
+                <h3 className="font-bold text-slate-900 text-base">Attacher un justificatif d'audit</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setUploadTargetActId(null);
+                  setUploadFile(null);
+                }}
+                className="p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Ligne d'activité : <strong className="text-slate-900">{uploadTargetActLabel}</strong>
+            </p>
+
+            <form onSubmit={handleUploadEvidenceForExisting} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Sélectionner un fichier (PDF, PNG, JPG - max 10 Mo) *
+                </label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.png,.jpg,.jpeg,.webp"
+                  onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 space-y-1">
+                <p>🔒 <strong>Confidentialité et Audit ISO 14064 :</strong></p>
+                <p>Le document est conservé dans l'espace sécurisé de votre organisation et ne sera accessible qu'aux auditeurs et gestionnaires carbone habilités.</p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadTargetActId(null);
+                    setUploadFile(null);
+                  }}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={!uploadFile || uploading}
+                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>{uploading ? 'Téléversement...' : 'Téléverser le justificatif'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

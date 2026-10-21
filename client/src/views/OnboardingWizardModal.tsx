@@ -3,7 +3,7 @@
  * Conforme au parcours client de zéro à un premier bilan (Prompt Maître Section 9)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -21,12 +21,16 @@ import {
   Download,
   Sparkles
 } from 'lucide-react';
+import { api } from '../api.js';
 
 interface OnboardingWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (view: string) => void;
   orgName: string;
+  orgId?: string;
+  initialStep?: number;
+  onStepChange?: (step: number) => void;
 }
 
 const ONBOARDING_STEPS = [
@@ -116,9 +120,34 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   isOpen,
   onClose,
   onNavigate,
-  orgName
+  orgName,
+  orgId,
+  initialStep = 1,
+  onStepChange
 }) => {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(Math.max(0, initialStep - 1));
+
+  useEffect(() => {
+    if (isOpen && orgId) {
+      api.organizations.getOnboarding(orgId)
+        .then(res => {
+          if (res?.onboarding_step) {
+            const idx = Math.min(Math.max(0, res.onboarding_step - 1), ONBOARDING_STEPS.length - 1);
+            setCurrentStepIndex(idx);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isOpen, orgId]);
+
+  const handleStepSelect = (idx: number) => {
+    setCurrentStepIndex(idx);
+    const stepNumber = idx + 1;
+    if (orgId) {
+      api.organizations.updateOnboarding(orgId, { step: stepNumber, completed: stepNumber >= 10 }).catch(console.error);
+    }
+    onStepChange?.(stepNumber);
+  };
 
   if (!isOpen) return null;
 
@@ -147,7 +176,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
           {ONBOARDING_STEPS.map((s, idx) => (
             <div
               key={s.step}
-              onClick={() => setCurrentStepIndex(idx)}
+              onClick={() => handleStepSelect(idx)}
               className={`h-2 rounded-full cursor-pointer transition ${
                 idx === currentStepIndex
                   ? 'bg-brand-800 ring-2 ring-brand-300'
@@ -194,7 +223,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
         <div className="flex justify-between items-center pt-2 border-t border-slate-100">
           <button
             disabled={currentStepIndex === 0}
-            onClick={() => setCurrentStepIndex(prev => prev - 1)}
+            onClick={() => handleStepSelect(currentStepIndex - 1)}
             className="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50 transition flex items-center space-x-1 disabled:opacity-30"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -208,7 +237,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
           <button
             onClick={() => {
               if (currentStepIndex < ONBOARDING_STEPS.length - 1) {
-                setCurrentStepIndex(prev => prev + 1);
+                handleStepSelect(currentStepIndex + 1);
               } else {
                 onClose();
               }
